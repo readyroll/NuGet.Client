@@ -62,6 +62,10 @@ namespace NuGet.PackageManagement.VisualStudio
                     envDTEProject.Name,
                     EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject));
             }
+            else if((result = GetCpsPackageReferenceBasedProject(envDTEProject)) != null)
+            {
+
+            }
             else if ((result = GetMSBuildShellOutNuGetProject(envDTEProject)) != null)
             {
                 // Use the NuGetProject result initialized in the condition.
@@ -136,6 +140,21 @@ namespace NuGet.PackageManagement.VisualStudio
             try
             {
                 return MSBuildShellOutNuGetProject.Create(project);
+            }
+            catch
+            {
+                // Ignore failures. If this method returns null, the problem falls into one of the other NuGet project
+                // types.
+            }
+
+            return null;
+        }
+
+        public static CpsPackageReferenceBasedProject GetCpsPackageReferenceBasedProject(EnvDTEProject project)
+        {
+            try
+            {
+                return CpsPackageReferenceBasedProject.Create(project);
             }
             catch
             {
