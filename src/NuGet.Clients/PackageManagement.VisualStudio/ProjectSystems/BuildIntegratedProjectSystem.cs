@@ -28,12 +28,14 @@ namespace NuGet.PackageManagement.VisualStudio
             string msbuildProjectFilePath,
             EnvDTEProject envDTEProject,
             IMSBuildNuGetProjectSystem msbuildProjectSystem,
-            string uniqueName)
+            string uniqueName,
+            string projectId)
             : base(jsonConfigPath, msbuildProjectFilePath, msbuildProjectSystem)
         {
             _envDTEProject = envDTEProject;
 
             InternalMetadata.Add(NuGetProjectMetadataKeys.UniqueName, uniqueName);
+            InternalMetadata.Add(NuGetProjectMetadataKeys.ProjectId, projectId);
         }
 
         private IScriptExecutor ScriptExecutor

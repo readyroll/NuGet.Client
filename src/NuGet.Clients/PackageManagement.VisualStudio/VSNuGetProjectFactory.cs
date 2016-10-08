@@ -54,13 +54,16 @@ namespace NuGet.PackageManagement.VisualStudio
 
             NuGetProject result = null;
 
+            var projectId = VsHierarchyUtility.GetProjectId(envDTEProject);
+
             var projectK = GetProjectKProject(envDTEProject);
             if (projectK != null)
             {
                 result = new ProjectKNuGetProject(
                     projectK,
                     envDTEProject.Name,
-                    EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject));
+                    EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject),
+                    projectId);
             }
             else if ((result = GetMSBuildShellOutNuGetProject(envDTEProject)) != null)
             {
@@ -70,7 +73,8 @@ namespace NuGet.PackageManagement.VisualStudio
             {
                 var msBuildNuGetProjectSystem = MSBuildNuGetProjectSystemFactory.CreateMSBuildNuGetProjectSystem(
                     envDTEProject,
-                    nuGetProjectContext);
+                    nuGetProjectContext,
+                    projectId);
 
                 var isWebSite = msBuildNuGetProjectSystem is WebSiteProjectSystem;
 
@@ -107,7 +111,8 @@ namespace NuGet.PackageManagement.VisualStudio
                                 msbuildProjectFile.FullName,
                                 envDTEProject,
                                 msBuildNuGetProjectSystem,
-                                EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject));
+                                EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject),
+                                projectId);
                         }
                     }
                 }
@@ -124,7 +129,8 @@ namespace NuGet.PackageManagement.VisualStudio
                         envDTEProject,
                         msBuildNuGetProjectSystem,
                         folderNuGetProjectFullPath,
-                        packagesConfigFolderPath);
+                        packagesConfigFolderPath,
+                        projectId);
                 }
             }
 

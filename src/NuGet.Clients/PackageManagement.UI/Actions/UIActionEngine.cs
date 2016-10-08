@@ -13,6 +13,7 @@ using NuGet.Common;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
+using NuGet.VisualStudio.Facade.Telemetry;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -23,6 +24,7 @@ namespace NuGet.PackageManagement.UI
     {
         private readonly ISourceRepositoryProvider _sourceProvider;
         private readonly NuGetPackageManager _packageManager;
+        private Stopwatch ActionStopWatch = new Stopwatch();
 
         /// <summary>
         /// Create a UIActionEngine to perform installs/uninstalls
@@ -43,8 +45,11 @@ namespace NuGet.PackageManagement.UI
             DependencyObject windowOwner,
             CancellationToken token)
         {
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
+            var operationType = NugetOperationType.Install;
+            if (userAction.Action == NuGetProjectActionType.Uninstall)
+            {
+                operationType = NugetOperationType.Uninstall;
+            }
 
             await PerformActionImplAsync(
                 uiService,
@@ -80,10 +85,8 @@ namespace NuGet.PackageManagement.UI
                     return ExecuteActionsAsync(actions, uiService.ProgressWindow, userAction, token);
                 },
                 windowOwner,
+                operationType,
                 token);
-
-            stopWatch.Stop();
-            uiService.ProgressWindow.Log(ProjectManagement.MessageLevel.Info, string.Format(CultureInfo.CurrentCulture, Resources.Operation_TotalTime, stopWatch.Elapsed));
         }
 
         /// <summary>
@@ -120,10 +123,8 @@ namespace NuGet.PackageManagement.UI
                         token);
                 },
                 windowOwner,
+                NugetOperationType.Update,
                 token);
-
-            stopWatch.Stop();
-            uiService.ProgressWindow.Log(ProjectManagement.MessageLevel.Info, string.Format(CultureInfo.CurrentCulture, Resources.Operation_TotalTime, stopWatch.Elapsed));
         }
 
         /// <summary>
@@ -182,14 +183,44 @@ namespace NuGet.PackageManagement.UI
             Func<Task<IReadOnlyList<ResolvedAction>>> resolveActionsAsync,
             Func<IReadOnlyList<ResolvedAction>, Task> executeActionsAsync,
             DependencyObject windowOwner,
+            NugetOperationType operationType,
             CancellationToken token)
         {
+            var status = NugetOperationStatus.Succeed;
+            var statusMessage = string.Empty;
+            var startTime = DateTime.Now;            
+            var packageCount = 0;
+
             try
             {
                 uiService.ShowProgressDialog(windowOwner);
 
+                ActionStopWatch.Restart();
+
                 var actions = await resolveActionsAsync();
                 var results = GetPreviewResults(actions);
+
+                if(operationType == NugetOperationType.Uninstall)
+                {
+                    packageCount = results.SelectMany(result => result.Deleted).
+                        Select(package => package.Id).Distinct().Count();
+                }
+                else
+                {
+                    var addCount = results.SelectMany(result => result.Added).
+                        Select(package => package.Id).Distinct().Count();
+
+                    var updateCount = results.SelectMany(result => result.Updated).
+                        Select(result => result.New.Id).Distinct().Count();
+                    packageCount = addCount + updateCount;
+
+                    if (updateCount > 0)
+                    {
+                        operationType = NugetOperationType.Update;
+                    }
+                }
+
+                ActionStopWatch.Stop();
 
                 // Show the preview window.
                 if (uiService.DisplayPreviewWindow)
@@ -197,14 +228,21 @@ namespace NuGet.PackageManagement.UI
                     var shouldContinue = uiService.PromptForPreviewAcceptance(results);
                     if (!shouldContinue)
                     {
+                        statusMessage = "User cancelled on actions preview window.";
                         return;
                     }
                 }
-                
+
+                ActionStopWatch.Start();
+
                 // Show the license acceptance window.
                 var accepted = await CheckLicenseAcceptanceAsync(uiService, results, token);
+
+                ActionStopWatch.Start();
+
                 if (!accepted)
                 {
+                    statusMessage = "User cancelled on license acceptance window.";
                     return;
                 }
 
@@ -212,8 +250,12 @@ namespace NuGet.PackageManagement.UI
                 if (uiService.DisplayDeprecatedFrameworkWindow)
                 {
                     var shouldContinue = ShouldContinueDueToDotnetDeprecation(uiService, actions, token);
+
+                    ActionStopWatch.Start();
+
                     if (!shouldContinue)
                     {
+                        statusMessage = "User cancelled on dotnet depcrecation warning window.";
                         return;
                     }
                 }
@@ -229,6 +271,8 @@ namespace NuGet.PackageManagement.UI
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
+                status = NugetOperationStatus.Failed;
+                statusMessage = ex.Message;
                 if (ex.InnerException != null)
                 {
                     uiService.ShowError(ex.InnerException);
@@ -240,10 +284,31 @@ namespace NuGet.PackageManagement.UI
             }
             catch (Exception ex)
             {
+                status = NugetOperationStatus.Failed;
+                statusMessage = ex.Message;
                 uiService.ShowError(ex);
             }
             finally
             {
+                ActionStopWatch.Stop();
+
+                uiService.ProgressWindow.Log(ProjectManagement.MessageLevel.Info,
+                    string.Format(CultureInfo.CurrentCulture, Resources.Operation_TotalTime, ActionStopWatch.Elapsed));
+
+                var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
+                    uiService.Projects,
+                    operationType,
+                    OperationSource.UI,
+                    startTime,
+                    status,
+                    statusMessage,
+                    packageCount,
+                    DateTime.Now,
+                    ActionStopWatch.Elapsed.TotalSeconds);
+
+                var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
+                telemetryService.EmitActionEvent(actionTelemetryEvent);
+
                 uiService.CloseProgressDialog();
             }
         }
@@ -271,6 +336,8 @@ namespace NuGet.PackageManagement.UI
 
             var licenseMetadata = await GetPackageMetadataAsync(uiService, licenseCheck, token);
 
+            ActionStopWatch.Stop();
+
             // show license agreement
             if (licenseMetadata.Any(e => e.RequireLicenseAcceptance))
             {
@@ -293,6 +360,8 @@ namespace NuGet.PackageManagement.UI
             CancellationToken token)
         {
             var projects = DotnetDeprecatedPrompt.GetAffectedProjects(actions);
+
+            ActionStopWatch.Stop();
 
             if (projects.Any())
             {
@@ -482,14 +551,14 @@ namespace NuGet.PackageManagement.UI
         /// Get the package metadata to see if RequireLicenseAcceptance is true
         /// </summary>
         private async Task<List<IPackageSearchMetadata>> GetPackageMetadataAsync(
-            INuGetUI uiService, 
-            IEnumerable<PackageIdentity> packages, 
+            INuGetUI uiService,
+            IEnumerable<PackageIdentity> packages,
             CancellationToken token)
         {
             var results = new List<IPackageSearchMetadata>();
 
             // local sources
-            var sources = new List<SourceRepository>();            
+            var sources = new List<SourceRepository>();
             sources.Add(_packageManager.PackagesFolderSourceRepository);
             sources.AddRange(_packageManager.GlobalPackageFolderRepositories);
 

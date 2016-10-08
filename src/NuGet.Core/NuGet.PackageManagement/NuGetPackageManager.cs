@@ -647,8 +647,8 @@ namespace NuGet.PackageManagement
             var maxTasks = 4;
             var tasks = new List<Task<IEnumerable<NuGetProjectAction>>>(maxTasks);
             var nugetActions = new List<NuGetProjectAction>();
-            
-            var buildIntegratedProjects = nuGetProjects.OfType<BuildIntegratedNuGetProject>().ToList();
+
+            var buildIntegratedProjects = nuGetProjects.Where(project => project is INuGetIntegratedProject);
             var nonBuildIntegratedProjects = nuGetProjects.Except(buildIntegratedProjects).ToList();
 
             // add tasks for all build integrated projects
@@ -2597,7 +2597,7 @@ namespace NuGet.PackageManagement
 
                     if (!string.IsNullOrEmpty(packageFolderPath))
                     {
-                        readmeFilePath = Path.Combine(packageFolderPath, Constants.ReadmeFileName);
+                        readmeFilePath = Path.Combine(packageFolderPath, ProjectManagement.Constants.ReadmeFileName);
                     }
                 }
                 else
@@ -2606,7 +2606,7 @@ namespace NuGet.PackageManagement
 
                     if (!string.IsNullOrEmpty(packagePath))
                     {
-                        readmeFilePath = Path.Combine(Path.GetDirectoryName(packagePath), Constants.ReadmeFileName);
+                        readmeFilePath = Path.Combine(Path.GetDirectoryName(packagePath), ProjectManagement.Constants.ReadmeFileName);
                     }
                 }
 

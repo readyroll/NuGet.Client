@@ -63,7 +63,7 @@ namespace NuGet.PackageManagement
             return false;
         }
 
-        public static async Task RestoreAsync(
+        public static async Task<IReadOnlyList<RestoreSummary>> RestoreAsync(
             IEnumerable<IDependencyGraphProject> projects,
             IEnumerable<string> sources,
             ISettings settings,
@@ -89,7 +89,7 @@ namespace NuGet.PackageManagement
                     }
                 }
             }
-
+            
             // Check if there are actual projects to restore before running.
             if (dgSpec.Restore.Count > 0)
             {
@@ -116,10 +116,13 @@ namespace NuGet.PackageManagement
                     };
 
                     var restoreSummaries = await RestoreRunner.Run(restoreContext);
-
                     RestoreSummary.Log(referenceContext.Logger, restoreSummaries);
+
+                    return restoreSummaries;
                 }
             }
+
+            return new List<RestoreSummary>();
         }
     }
 }

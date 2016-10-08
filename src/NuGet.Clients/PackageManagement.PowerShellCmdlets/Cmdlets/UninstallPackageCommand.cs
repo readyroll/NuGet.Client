@@ -9,6 +9,7 @@ using NuGet.Common;
 using NuGet.PackageManagement.UI;
 using NuGet.PackageManagement.VisualStudio;
 using NuGet.ProjectManagement;
+using NuGet.VisualStudio.Facade.Telemetry;
 using Task = System.Threading.Tasks.Task;
 
 namespace NuGet.PackageManagement.PowerShellCmdlets
@@ -54,12 +55,30 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         protected override void ProcessRecordCore()
         {
+            var startTime = DateTime.Now;
+            ActionStopWatch.Restart();
+
             Preprocess();
 
             SubscribeToProgressEvents();
             Task.Run(() => UnInstallPackage());
             WaitAndLogPackageActions();
             UnsubscribeFromProgressEvents();
+
+            ActionStopWatch.Stop();
+            var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
+                new[] { Project },
+                NugetOperationType.Uninstall,
+                OperationSource.PMC,
+                startTime,
+                _status,
+                _errorMessage,
+                1,
+                DateTime.Now,
+                ActionStopWatch.Elapsed.TotalSeconds);
+
+            var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
+            telemetryService.EmitActionEvent(actionTelemetryEvent);
         }
 
         protected override void EndProcessing()
@@ -88,6 +107,8 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (Exception ex)
             {
+                _status = NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
             finally

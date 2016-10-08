@@ -10,6 +10,7 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Text;
 using System.Threading;
+using NuGet.Common;
 using NuGet.PackageManagement.UI;
 using NuGet.PackageManagement.VisualStudio;
 using NuGet.Packaging.Core;
@@ -108,10 +109,24 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 var actions = await PackageManager.PreviewInstallPackageAsync(project, identity, resolutionContext, projectContext, PrimarySourceRepositories, null, CancellationToken.None);
 
+                if (!actions.Any())
+                {
+                    _status = NugetOperationStatus.NoOp;
+                }
+                else
+                {
+                    _packageCount = actions.Select(action => action.PackageIdentity.Id).Distinct().Count();
+                }
+
+                ActionStopWatch.Stop();
+
                 if (!ShouldContinueDueToDotnetDeprecation(actions, isPreview))
                 {
+                    ActionStopWatch.Start();
                     return;
                 }
+
+                ActionStopWatch.Start();
 
                 if (isPreview)
                 {
@@ -128,6 +143,8 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 if (ex.InnerException is PackageAlreadyInstalledException)
                 {
+                    _status = Common.NugetOperationStatus.NoOp;
+                    _errorMessage = ex.Message;
                     Log(MessageLevel.Info, ex.Message);
                 }
                 else
@@ -154,10 +171,25 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 var actions = await PackageManager.PreviewInstallPackageAsync(project, packageId, resolutionContext, projectContext, PrimarySourceRepositories, null, CancellationToken.None);
 
+                if (!actions.Any())
+                {
+                    _status = NugetOperationStatus.NoOp;
+                }
+                else
+                {
+                    _packageCount = actions.Select(
+                        action => action.PackageIdentity.Id).Distinct().Count();
+                }
+
+                ActionStopWatch.Stop();
+
                 if (!ShouldContinueDueToDotnetDeprecation(actions, isPreview))
                 {
+                    ActionStopWatch.Start();
                     return;
                 }
+
+                ActionStopWatch.Start();
 
                 if (isPreview)
                 {
@@ -175,6 +207,8 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 if (ex.InnerException is PackageAlreadyInstalledException)
                 {
+                    _status = Common.NugetOperationStatus.NoOp;
+                    _errorMessage = ex.Message;
                     Log(MessageLevel.Info, ex.Message);
                 }
                 else

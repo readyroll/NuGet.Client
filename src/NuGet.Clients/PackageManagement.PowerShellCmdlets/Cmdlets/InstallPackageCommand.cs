@@ -18,6 +18,7 @@ using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using NuGet.VisualStudio.Facade.Telemetry;
 using Task = System.Threading.Tasks.Task;
 
 namespace NuGet.PackageManagement.PowerShellCmdlets
@@ -49,6 +50,9 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         protected override void ProcessRecordCore()
         {
+            var startTime = DateTime.Now;
+            ActionStopWatch.Restart();
+
             Preprocess();
 
             SubscribeToProgressEvents();
@@ -65,6 +69,21 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             WaitAndLogPackageActions();
             UnsubscribeFromProgressEvents();
+
+            ActionStopWatch.Stop();
+            var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
+                new[] { Project },
+                NugetOperationType.Install,
+                OperationSource.PMC,
+                startTime,
+                _status,
+                _errorMessage,
+                _packageCount,
+                DateTime.Now,
+                ActionStopWatch.Elapsed.TotalSeconds);
+
+            var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
+            telemetryService.EmitActionEvent(actionTelemetryEvent);
         }
 
         /// <summary>
@@ -82,6 +101,8 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (Exception ex)
             {
+                _status = Common.NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
             finally
@@ -102,6 +123,9 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (FatalProtocolException ex)
             {
+                _status = Common.NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
+
                 // Additional information about the exception can be observed by using the -verbose switch with the install-package command
                 Log(MessageLevel.Debug, ExceptionUtilities.DisplayMessage(ex));
 
@@ -111,6 +135,9 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (Exception ex)
             {
+                _status = Common.NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
+
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
             finally

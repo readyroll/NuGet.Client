@@ -3,15 +3,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Management.Automation;
 using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Common;
+using NuGet.PackageManagement.UI;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Resolver;
 using NuGet.Versioning;
+using NuGet.VisualStudio.Facade.Telemetry;
 
 namespace NuGet.PackageManagement.PowerShellCmdlets
 {
@@ -98,11 +101,29 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         protected override void ProcessRecordCore()
         {
+            var startTime = DateTime.Now;
+            ActionStopWatch.Restart();
+
             Preprocess();
 
             SubscribeToProgressEvents();
             PerformPackageUpdatesOrReinstalls();
             UnsubscribeFromProgressEvents();
+
+            ActionStopWatch.Stop();
+            var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
+                new[] { Project },
+                NugetOperationType.Update,
+                OperationSource.PMC,
+                startTime,
+                _status,
+                _errorMessage,
+                _packageCount,
+                DateTime.Now,
+                ActionStopWatch.Elapsed.TotalSeconds);
+
+            var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
+            telemetryService.EmitActionEvent(actionTelemetryEvent);
         }
 
         /// <summary>
@@ -140,10 +161,21 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                     PrimarySourceRepositories,
                     Token);
 
+                if(!actions.Any())
+                {
+                    _status = NugetOperationStatus.NoOp;
+                }
+                else
+                {
+                    _packageCount = actions.Select(action => action.PackageIdentity.Id).Distinct().Count();
+                }
+
                 await ExecuteActions(actions);
             }
             catch (Exception ex)
             {
+                _status = NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
             finally
@@ -169,11 +201,14 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                 }
                 else
                 {
+                    _status = NugetOperationStatus.NoOp;
                     Log(MessageLevel.Error, Resources.Cmdlet_PackageNotInstalledInAnyProject, Id);
                 }
             }
             catch (Exception ex)
             {
+                _status = NugetOperationStatus.Failed;
+                _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
             finally
@@ -214,6 +249,16 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                     Token);
             }
 
+            if (!actions.Any())
+            {
+                _status = NugetOperationStatus.NoOp;
+            }
+            else
+            {
+                _packageCount = actions.Select(
+                    action => action.PackageIdentity.Id).Distinct().Count();
+            }
+
             await ExecuteActions(actions);
         }
 
@@ -243,10 +288,15 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
         /// <returns></returns>
         private async Task ExecuteActions(IEnumerable<NuGetProjectAction> actions)
         {
+            ActionStopWatch.Stop();
+
             if (!ShouldContinueDueToDotnetDeprecation(actions, WhatIf.IsPresent))
-            {
+			{
+                ActionStopWatch.Start();
                 return;
-            }
+			}
+
+            ActionStopWatch.Start();
 
             if (WhatIf.IsPresent)
             {

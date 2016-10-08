@@ -3,8 +3,11 @@
 
 using System.Collections.Generic;
 
-namespace NuGet.VisualStudio.Facade.Telemetry
+namespace NuGet.Common
 {
+    /// <summary>
+    /// This will be used to pass different nuget telemetry events data to vs telemetry service.
+    /// </summary>
     public class TelemetryEvent
     {
         public TelemetryEvent(string eventName)
@@ -14,6 +17,7 @@ namespace NuGet.VisualStudio.Facade.Telemetry
         }
 
         public string Name { get; }
+
         public IDictionary<string, object> Properties { get; }
     }
 }

@@ -49,6 +49,13 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
         // TODO: Hook up DownloadResource.Progress event
         private readonly IHttpClientEvents _httpClientEvents;
 
+        // default stopWatch to calculate total time elapsed for an action
+        protected Stopwatch ActionStopWatch = new Stopwatch();
+        
+        protected int _packageCount;
+        protected NugetOperationStatus _status = NugetOperationStatus.Succeed;
+        protected string _errorMessage = string.Empty;
+
         private ProgressRecordCollection _progressRecordCache;
         private Exception _scriptException;
         private bool _overwriteAll;
@@ -210,7 +217,6 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
         {
             var stopWatch = new Stopwatch();
             stopWatch.Start();
-
             try
             {
                 ProcessRecordCore();
