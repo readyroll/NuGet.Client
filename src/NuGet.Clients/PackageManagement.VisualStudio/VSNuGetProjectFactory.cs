@@ -9,6 +9,9 @@ using Microsoft.VisualStudio.ProjectSystem.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using NuGet.Common;
+#if VS15
+using NuGet.PackageManagement.VisualStudio.ProjectSystems;
+#endif
 using NuGet.ProjectManagement;
 using EnvDTEProject = EnvDTE.Project;
 using IServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
@@ -62,6 +65,11 @@ namespace NuGet.PackageManagement.VisualStudio
                     envDTEProject.Name,
                     EnvDTEProjectUtility.GetCustomUniqueName(envDTEProject));
             }
+#if VS15
+            else if ((result = GetLegacyCSProjPackageReferenceNuGetProject(envDTEProject)) != null)
+            {
+            }
+#endif
             else if ((result = GetMSBuildShellOutNuGetProject(envDTEProject)) != null)
             {
                 // Use the NuGetProject result initialized in the condition.
@@ -145,6 +153,23 @@ namespace NuGet.PackageManagement.VisualStudio
 
             return null;
         }
+
+#if VS15
+        public static LegacyCSProjPackageReferenceNuGetProject GetLegacyCSProjPackageReferenceNuGetProject(EnvDTEProject project)
+        {
+            try
+            {
+                return LegacyCSProjPackageReferenceNuGetProject.Create(project);
+            }
+            catch
+            {
+                // Ignore failures. If this method returns null, the problem falls into one of the other NuGet project
+                // types.
+            }
+
+            return null;
+        }
+#endif
 
         public static INuGetPackageManager GetProjectKProject(EnvDTEProject project)
         {

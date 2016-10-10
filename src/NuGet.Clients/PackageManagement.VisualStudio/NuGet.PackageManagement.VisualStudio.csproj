@@ -48,8 +48,11 @@
     <When Condition="$(VisualStudioVersion)=='15.0'">
       <ItemGroup>
         <Reference Include="Microsoft.VisualStudio.ProjectSystem.Interop">
-          <HintPath>$(EnlistmentRoot)\packages\Microsoft.VisualStudio.ProjectSystem.15.0.183-pre\lib\net451\Microsoft.VisualStudio.ProjectSystem.Interop.dll</HintPath>
+          <HintPath>$(EnlistmentRoot)\packages\Microsoft.VisualStudio.ProjectSystem.15.0.530-pre-g355f3866ef\lib\net46\Microsoft.VisualStudio.ProjectSystem.Interop.dll</HintPath>
           <EmbedInteropTypes>True</EmbedInteropTypes>
+        </Reference>
+        <Reference Include="Microsoft.VisualStudio.ProjectSystem">
+          <HintPath>$(EnlistmentRoot)\packages\Microsoft.VisualStudio.ProjectSystem.15.0.530-pre-g355f3866ef\lib\net46\Microsoft.VisualStudio.ProjectSystem.dll</HintPath>
         </Reference>
       </ItemGroup>
     </When>
@@ -103,6 +106,7 @@
     <Compile Include="IDE\VSProjectReferenceUtility.cs" />
     <Compile Include="ProjectSystems\VSMSBuildNuGetProject.cs" />
     <Compile Include="ProjectSystems\MSBuildShellOutNuGetProject.cs" />
+    <Compile Include="ProjectSystems\LegacyCSProjPackageReferenceNuGetProject.cs" />
     <Compile Include="Telemetry\ProjectTelemetryEvent.cs" />
     <Compile Include="IDE\PackageInitPS1State.cs" />
     <Compile Include="IDE\VsCommonOperations.cs" />
