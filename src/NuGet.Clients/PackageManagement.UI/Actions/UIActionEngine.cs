@@ -45,10 +45,10 @@ namespace NuGet.PackageManagement.UI
             DependencyObject windowOwner,
             CancellationToken token)
         {
-            var operationType = NugetOperationType.Install;
+            var operationType = NuGetOperationType.Install;
             if (userAction.Action == NuGetProjectActionType.Uninstall)
             {
-                operationType = NugetOperationType.Uninstall;
+                operationType = NuGetOperationType.Uninstall;
             }
 
             await PerformActionImplAsync(
@@ -99,9 +99,6 @@ namespace NuGet.PackageManagement.UI
             DependencyObject windowOwner,
             CancellationToken token)
         {
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-
             await PerformActionImplAsync(
                 uiService,
                 () =>
@@ -123,7 +120,7 @@ namespace NuGet.PackageManagement.UI
                         token);
                 },
                 windowOwner,
-                NugetOperationType.Update,
+                NuGetOperationType.Update,
                 token);
         }
 
@@ -183,13 +180,17 @@ namespace NuGet.PackageManagement.UI
             Func<Task<IReadOnlyList<ResolvedAction>>> resolveActionsAsync,
             Func<IReadOnlyList<ResolvedAction>, Task> executeActionsAsync,
             DependencyObject windowOwner,
-            NugetOperationType operationType,
+            NuGetOperationType operationType,
             CancellationToken token)
         {
-            var status = NugetOperationStatus.Succeed;
+            var status = NuGetOperationStatus.Succeeded;
             var statusMessage = string.Empty;
-            var startTime = DateTime.Now;            
+            var startTime = DateTimeOffset.Now;
             var packageCount = 0;
+            var operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(TelemetrySession.Instance, operationId);
+            var actionTelemetryService = new ActionsTelemetryService(telemetrySessionContext);
+            _packageManager.NugetActionsTelemetryService = actionTelemetryService;
 
             try
             {
@@ -200,7 +201,7 @@ namespace NuGet.PackageManagement.UI
                 var actions = await resolveActionsAsync();
                 var results = GetPreviewResults(actions);
 
-                if(operationType == NugetOperationType.Uninstall)
+                if (operationType == NuGetOperationType.Uninstall)
                 {
                     packageCount = results.SelectMany(result => result.Deleted).
                         Select(package => package.Id).Distinct().Count();
@@ -216,7 +217,7 @@ namespace NuGet.PackageManagement.UI
 
                     if (updateCount > 0)
                     {
-                        operationType = NugetOperationType.Update;
+                        operationType = NuGetOperationType.Update;
                     }
                 }
 
@@ -255,7 +256,7 @@ namespace NuGet.PackageManagement.UI
 
                     if (!shouldContinue)
                     {
-                        statusMessage = "User cancelled on dotnet depcrecation warning window.";
+                        statusMessage = "User cancelled on dotnet deprecation warning window.";
                         return;
                     }
                 }
@@ -271,7 +272,7 @@ namespace NuGet.PackageManagement.UI
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
-                status = NugetOperationStatus.Failed;
+                status = NuGetOperationStatus.Failed;
                 statusMessage = ex.Message;
                 if (ex.InnerException != null)
                 {
@@ -284,7 +285,7 @@ namespace NuGet.PackageManagement.UI
             }
             catch (Exception ex)
             {
-                status = NugetOperationStatus.Failed;
+                status = NuGetOperationStatus.Failed;
                 statusMessage = ex.Message;
                 uiService.ShowError(ex);
             }
@@ -297,17 +298,16 @@ namespace NuGet.PackageManagement.UI
 
                 var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
                     uiService.Projects,
+                    operationId,
                     operationType,
                     OperationSource.UI,
                     startTime,
                     status,
                     statusMessage,
                     packageCount,
-                    DateTime.Now,
                     ActionStopWatch.Elapsed.TotalSeconds);
 
-                var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
-                telemetryService.EmitActionEvent(actionTelemetryEvent);
+                actionTelemetryService.EmitActionEvent(actionTelemetryEvent);
 
                 uiService.CloseProgressDialog();
             }

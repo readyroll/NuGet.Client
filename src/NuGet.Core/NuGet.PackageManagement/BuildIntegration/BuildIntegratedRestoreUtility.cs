@@ -35,6 +35,7 @@ namespace NuGet.PackageManagement
             IEnumerable<SourceRepository> sources,
             string effectiveGlobalPackagesFolder,
             IEnumerable<string> fallbackPackageFolders,
+            ActionsTelemetryService telemetryService,
             CancellationToken token)
         {
             return await RestoreAsync(
@@ -44,6 +45,7 @@ namespace NuGet.PackageManagement
                 effectiveGlobalPackagesFolder,
                 fallbackPackageFolders,
                 c => { },
+                telemetryService,
                 token);
         }
 
@@ -90,6 +92,7 @@ namespace NuGet.PackageManagement
             string effectiveGlobalPackagesFolder,
             IEnumerable<string> fallbackPackageFolders,
             Action<SourceCacheContext> cacheContextModifier,
+            ActionsTelemetryService telemetryService,
             CancellationToken token)
         {
             using (var cacheContext = new SourceCacheContext())
@@ -109,6 +112,7 @@ namespace NuGet.PackageManagement
                     context,
                     providers,
                     cacheContext,
+                    telemetryService,
                     token);
 
                 // Throw before writing if this has been canceled
@@ -130,6 +134,7 @@ namespace NuGet.PackageManagement
             ExternalProjectReferenceContext context,
             RestoreCommandProviders providers,
             SourceCacheContext cacheContext,
+            ActionsTelemetryService telemetryService,
             CancellationToken token)
         {
             // Restoring packages
@@ -149,6 +154,9 @@ namespace NuGet.PackageManagement
             // Find the full closure of project.json files and referenced projects
             var projectReferences = await project.GetProjectReferenceClosureAsync(context);
             request.ExternalProjects = projectReferences.ToList();
+
+            // add telemetry service instance to emit perf telemetry events at granular level.
+            request.NugetTelemetryService = telemetryService;
 
             token.ThrowIfCancellationRequested();
 

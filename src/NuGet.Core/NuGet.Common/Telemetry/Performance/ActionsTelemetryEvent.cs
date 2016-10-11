@@ -13,28 +13,28 @@ namespace NuGet.Common
         public ActionsTelemetryEvent(
             string operationId,
             string[] projectIds,
-            NugetOperationType operationType,
+            NuGetOperationType operationType,
             OperationSource source,
-            DateTime startTime,
-            NugetOperationStatus status,
+            DateTimeOffset startTime,
+            NuGetOperationStatus status,
             string statusMessage,
             int packageCount,
-            DateTime endTime,
+            DateTimeOffset endTime,
             double duration) : base(operationId, projectIds, startTime, status, statusMessage, packageCount, endTime, duration)
         {
             OperationType = operationType;
             Source = source;
         }
 
-        public NugetOperationType OperationType { get; set; }
+        public NuGetOperationType OperationType { get; }
 
-        public OperationSource Source { get; set; }
+        public OperationSource Source { get; }
     }
 
     /// <summary>
     /// Define nuget operation type values.
     /// </summary>
-    public enum NugetOperationType
+    public enum NuGetOperationType
     {
         /// <summary>
         /// Install package action.

@@ -30,6 +30,7 @@ namespace NuGet.Commands
     {
         private readonly ILogger _logger;
         private readonly RestoreRequest _request;
+        private readonly ActionsTelemetryService _telemetryService;
 
         private bool _success = true;
 
@@ -54,6 +55,7 @@ namespace NuGet.Commands
             }
 
             _logger = request.Log;
+            _telemetryService = request.NugetTelemetryService;
             _request = request;
         }
 
@@ -64,6 +66,9 @@ namespace NuGet.Commands
 
         public async Task<RestoreResult> ExecuteAsync(CancellationToken token)
         {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             // Local package folders (non-sources)
             var localRepositories = new List<NuGetv3LocalRepository>();
             localRepositories.Add(_request.DependencyProviders.GlobalPackages);
@@ -78,6 +83,12 @@ namespace NuGet.Commands
                 contextForProject,
                 token);
 
+            stopWatch.Stop();
+            EmitRestoreStepEvent(
+                string.Format(TelemetryConstants.RestoreGraphStepName, _request.Project.Name),
+                stopWatch.Elapsed.TotalSeconds);
+            stopWatch.Restart();
+
             // Only execute tool restore if the request lock file version is 2 or greater.
             // Tools did not exist prior to v2 lock files.
             // This will be removed once xproj support goes away, limit to Unknown restore types!
@@ -88,6 +99,12 @@ namespace NuGet.Commands
                                     _request.DependencyProviders.GlobalPackages,
                                     _request.DependencyProviders.FallbackPackageFolders,
                                     token);
+
+                stopWatch.Stop();
+                EmitRestoreStepEvent(
+                    string.Format(TelemetryConstants.ToolsRestoreStepName, _request.Project.Name),
+                    stopWatch.Elapsed.TotalSeconds);
+                stopWatch.Restart();
             }
 
             // Create assets file
@@ -98,6 +115,12 @@ namespace NuGet.Commands
                 localRepositories,
                 contextForProject,
                 toolRestoreResults);
+
+            stopWatch.Stop();
+            EmitRestoreStepEvent(
+                string.Format(TelemetryConstants.CreateAssetsFileStepName, _request.Project.Name),
+                stopWatch.Elapsed.TotalSeconds);
+            stopWatch.Restart();
 
             if (!ValidateRestoreGraphs(graphs, _logger))
             {
@@ -113,6 +136,12 @@ namespace NuGet.Commands
                 graphs,
                 _logger);
 
+            stopWatch.Stop();
+            EmitRestoreStepEvent(
+                string.Format(TelemetryConstants.PackageCompatibilityStepName, _request.Project.Name),
+                stopWatch.Elapsed.TotalSeconds);
+            stopWatch.Restart();
+
             if (checkResults.Any(r => !r.Success))
             {
                 _success = false;
@@ -126,6 +155,11 @@ namespace NuGet.Commands
                 contextForProject,
                 _request,
                 _includeFlagGraphs);
+
+            stopWatch.Stop();
+            EmitRestoreStepEvent(
+                string.Format(TelemetryConstants.CreateTargetPropFileStepName, _request.Project.Name),
+                stopWatch.Elapsed.TotalSeconds);
 
             // If the request is for a lower lock file version, downgrade it appropriately
             DowngradeLockFileIfNeeded(lockFile);
@@ -154,6 +188,14 @@ namespace NuGet.Commands
                 msbuild,
                 toolRestoreResults,
                 _request.RestoreOutputType);
+        }
+
+        private void EmitRestoreStepEvent(string stepName, double duration)
+        {
+            if (_telemetryService != null)
+            {
+                _telemetryService.EmitActionStepsEvent(stepName, duration);
+            }
         }
 
         private string GetLockFilePath(LockFile lockFile)

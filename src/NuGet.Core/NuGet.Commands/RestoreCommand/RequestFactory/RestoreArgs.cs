@@ -51,6 +51,8 @@ namespace NuGet.Commands
 
         public int? LockFileVersion { get; set; }
 
+        public ActionsTelemetryService NugetTelemetryService { get; set; }
+
         // Cache directory -> ISettings
         private ConcurrentDictionary<string, ISettings> _settingsCache
             = new ConcurrentDictionary<string, ISettings>(StringComparer.Ordinal);
@@ -150,6 +152,8 @@ namespace NuGet.Commands
         public void ApplyStandardProperties(RestoreRequest request)
         {
             request.PackageSaveMode = PackageSaveMode;
+
+            request.NugetTelemetryService = NugetTelemetryService;
 
             if (request.RestoreOutputType == RestoreOutputType.NETCore
                 || request.RestoreOutputType == RestoreOutputType.Standalone)

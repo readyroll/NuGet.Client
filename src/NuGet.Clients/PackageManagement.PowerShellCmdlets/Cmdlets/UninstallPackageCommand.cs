@@ -55,7 +55,8 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         protected override void ProcessRecordCore()
         {
-            var startTime = DateTime.Now;
+            var startTime = DateTimeOffset.Now;
+            _packageCount = 1;
             ActionStopWatch.Restart();
 
             Preprocess();
@@ -68,17 +69,16 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             ActionStopWatch.Stop();
             var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
                 new[] { Project },
-                NugetOperationType.Uninstall,
+                _operationId,
+                NuGetOperationType.Uninstall,
                 OperationSource.PMC,
                 startTime,
                 _status,
                 _errorMessage,
-                1,
-                DateTime.Now,
+                _packageCount,
                 ActionStopWatch.Elapsed.TotalSeconds);
 
-            var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
-            telemetryService.EmitActionEvent(actionTelemetryEvent);
+            _actionTelemetryService?.EmitActionEvent(actionTelemetryEvent);
         }
 
         protected override void EndProcessing()
@@ -107,7 +107,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (Exception ex)
             {
-                _status = NugetOperationStatus.Failed;
+                _status = NuGetOperationStatus.Failed;
                 _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }

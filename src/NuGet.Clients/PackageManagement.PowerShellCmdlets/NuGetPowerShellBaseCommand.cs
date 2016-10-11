@@ -26,6 +26,7 @@ using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using NuGet.VisualStudio.Facade.Telemetry;
 using ExecutionContext = NuGet.ProjectManagement.ExecutionContext;
 
 namespace NuGet.PackageManagement.PowerShellCmdlets
@@ -53,8 +54,10 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
         protected Stopwatch ActionStopWatch = new Stopwatch();
         
         protected int _packageCount;
-        protected NugetOperationStatus _status = NugetOperationStatus.Succeed;
+        protected NuGetOperationStatus _status = NuGetOperationStatus.Succeeded;
         protected string _errorMessage = string.Empty;
+        protected readonly string _operationId = Guid.NewGuid().ToString();
+        protected ActionsTelemetryService _actionTelemetryService;
 
         private ProgressRecordCollection _progressRecordCache;
         private Exception _scriptException;
@@ -99,11 +102,17 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
         {
             get
             {
-                return new NuGetPackageManager(
+                var packageManager = new NuGetPackageManager(
                     _sourceRepositoryProvider,
                     ConfigSettings,
                     VsSolutionManager,
                     _deleteOnRestartManager);
+
+                var telemetrySessionContext = new TelemetrySessionContext(TelemetrySession.Instance, _operationId);
+                _actionTelemetryService = new ActionsTelemetryService(telemetrySessionContext);
+                packageManager.NugetActionsTelemetryService = _actionTelemetryService;
+
+                return packageManager;
             }
         }
 

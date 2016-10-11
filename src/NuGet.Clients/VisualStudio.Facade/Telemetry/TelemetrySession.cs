@@ -10,7 +10,7 @@ namespace NuGet.VisualStudio.Facade.Telemetry
 {
     public class TelemetrySession : ITelemetrySession
     {
-        public static TelemetrySession Instance = new TelemetrySession();
+        public static readonly TelemetrySession Instance = new TelemetrySession();
 
         private TelemetrySession() { }
 

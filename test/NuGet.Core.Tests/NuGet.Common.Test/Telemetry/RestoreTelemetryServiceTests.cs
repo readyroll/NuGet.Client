@@ -10,13 +10,13 @@ namespace NuGet.Common.Test.Telemetry
     public class RestoreTelemetryServiceTests
     {
         [Theory]
-        [InlineData(RestoreOperationSource.OnBuild, NugetOperationStatus.Succeed)]
-        [InlineData(RestoreOperationSource.Explicit, NugetOperationStatus.Succeed)]
-        [InlineData(RestoreOperationSource.OnBuild, NugetOperationStatus.NoOp)]
-        [InlineData(RestoreOperationSource.Explicit, NugetOperationStatus.NoOp)]
-        [InlineData(RestoreOperationSource.OnBuild, NugetOperationStatus.Failed)]
-        [InlineData(RestoreOperationSource.Explicit, NugetOperationStatus.Failed)]
-        public void RestoreTelemetryService_EmitRestoreEvent_OperationSucceed(RestoreOperationSource source, NugetOperationStatus status)
+        [InlineData(RestoreOperationSource.OnBuild, NuGetOperationStatus.Succeeded)]
+        [InlineData(RestoreOperationSource.Explicit, NuGetOperationStatus.Succeeded)]
+        [InlineData(RestoreOperationSource.OnBuild, NuGetOperationStatus.NoOp)]
+        [InlineData(RestoreOperationSource.Explicit, NuGetOperationStatus.NoOp)]
+        [InlineData(RestoreOperationSource.OnBuild, NuGetOperationStatus.Failed)]
+        [InlineData(RestoreOperationSource.Explicit, NuGetOperationStatus.Failed)]
+        public void RestoreTelemetryService_EmitRestoreEvent_OperationSucceed(RestoreOperationSource source, NuGetOperationStatus status)
         {
             // Arrange
             var telemetrySession = new Mock<ITelemetrySession>();
@@ -25,18 +25,21 @@ namespace NuGet.Common.Test.Telemetry
                 .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
                 .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
 
-            var stausMessage = status == NugetOperationStatus.Failed ? "Operation Failed" : string.Empty;
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+
+            var stausMessage = status == NuGetOperationStatus.Failed ? "Operation Failed" : string.Empty;
             var restoreTelemetryData = new RestoreTelemetryEvent(
-                Guid.NewGuid().ToString(),
-                new[] { Guid.NewGuid().ToString() },
-                source,
-                DateTime.Now.AddSeconds(-3),
-                status,
-                stausMessage,
-                2,
-                DateTime.Now,
-                2.10);
-            var service = new RestoreTelemetryService(telemetrySession.Object);
+                operationId: operationId,
+                projectIds: new[] { Guid.NewGuid().ToString() },
+                source: source,
+                startTime: DateTime.Now.AddSeconds(-3),
+                status: status,
+                statusMessage: stausMessage,
+                packageCount: 2,
+                endTime: DateTime.Now,
+                duration: 2.10);
+            var service = new RestoreTelemetryService(telemetrySessionContext);
 
             // Act
             service.EmitRestoreEvent(restoreTelemetryData);
@@ -45,13 +48,49 @@ namespace NuGet.Common.Test.Telemetry
             VerifyTelemetryEventData(restoreTelemetryData, lastTelemetryEvent);
         }
 
+        [Theory]
+        [InlineData(TelemetryConstants.RestorePackagesConfigStepName)]
+        [InlineData(TelemetryConstants.IsRequiredRequiredStepName)]
+        [InlineData(TelemetryConstants.RestoreGraphStepName)]
+        [InlineData(TelemetryConstants.ToolsRestoreStepName)]
+        [InlineData(TelemetryConstants.CreateAssetsFileStepName)]
+        [InlineData(TelemetryConstants.PackageCompatibilityStepName)]
+        [InlineData(TelemetryConstants.CreateTargetPropFileStepName)]
+        public void RestoreTelemetryService_EmitActionStepsEvent(string stepName)
+        {
+            // Arrange
+            var telemetrySession = new Mock<ITelemetrySession>();
+            TelemetryEvent lastTelemetryEvent = null;
+            telemetrySession
+                .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
+                .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
+
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+            var duration = 1.12;
+            var stepNameWithProject = string.Format(stepName, "testProject");
+            var service = new RestoreTelemetryService(telemetrySessionContext);
+
+            // Act
+            service.EmitActionStepsEvent(stepNameWithProject, duration);
+
+            // Assert
+            Assert.NotNull(lastTelemetryEvent);
+            Assert.Equal(TelemetryConstants.NugetActionStepsEventName, lastTelemetryEvent.Name);
+            Assert.Equal(3, lastTelemetryEvent.Properties.Count);
+
+            Assert.Equal(operationId, lastTelemetryEvent.Properties[TelemetryConstants.OperationIdPropertyName].ToString());
+            Assert.Equal(stepNameWithProject, lastTelemetryEvent.Properties[TelemetryConstants.StepNamePropertyName].ToString());
+            Assert.Equal(duration, (double)lastTelemetryEvent.Properties[TelemetryConstants.DurationPropertyName]);
+        }
+
         private void VerifyTelemetryEventData(RestoreTelemetryEvent expected, TelemetryEvent actual)
         {
             Assert.NotNull(actual);
-            Assert.Equal(Constants.RestoreActionEventName, actual.Name);
+            Assert.Equal(TelemetryConstants.RestoreActionEventName, actual.Name);
             Assert.Equal(9, actual.Properties.Count);
 
-            Assert.Equal(expected.Source.ToString(), actual.Properties[Constants.OperationSourcePropertyName].ToString());
+            Assert.Equal(expected.Source.ToString(), actual.Properties[TelemetryConstants.OperationSourcePropertyName].ToString());
 
             TelemetryTestUtility.VerifyTelemetryEventData(expected, actual);
         }

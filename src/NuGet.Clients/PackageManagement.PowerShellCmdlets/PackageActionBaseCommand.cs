@@ -111,7 +111,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
                 if (!actions.Any())
                 {
-                    _status = NugetOperationStatus.NoOp;
+                    _status = NuGetOperationStatus.NoOp;
                 }
                 else
                 {
@@ -143,7 +143,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 if (ex.InnerException is PackageAlreadyInstalledException)
                 {
-                    _status = Common.NugetOperationStatus.NoOp;
+                    _status = Common.NuGetOperationStatus.NoOp;
                     _errorMessage = ex.Message;
                     Log(MessageLevel.Info, ex.Message);
                 }
@@ -173,7 +173,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
                 if (!actions.Any())
                 {
-                    _status = NugetOperationStatus.NoOp;
+                    _status = NuGetOperationStatus.NoOp;
                 }
                 else
                 {
@@ -207,7 +207,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             {
                 if (ex.InnerException is PackageAlreadyInstalledException)
                 {
-                    _status = Common.NugetOperationStatus.NoOp;
+                    _status = Common.NuGetOperationStatus.NoOp;
                     _errorMessage = ex.Message;
                     Log(MessageLevel.Info, ex.Message);
                 }

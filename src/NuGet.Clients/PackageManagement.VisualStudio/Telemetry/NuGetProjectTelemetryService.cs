@@ -30,16 +30,16 @@ namespace NuGet.PackageManagement.Telemetry
         public static NuGetProjectTelemetryService Instance =
             new NuGetProjectTelemetryService(TelemetrySession.Instance);
 
-        private readonly NuGetTelemetryService _nuGetTelemetryService;
+        private readonly ITelemetrySession telemetrySession;
 
-        public NuGetProjectTelemetryService(ITelemetrySession telemetrySession)
+        public NuGetProjectTelemetryService(ITelemetrySession telemetryService)
         {
-            if (telemetrySession == null)
+            if (telemetryService == null)
             {
-                throw new ArgumentNullException(nameof(telemetrySession));
+                throw new ArgumentNullException(nameof(telemetryService));
             }
 
-            _nuGetTelemetryService = new NuGetTelemetryService(telemetrySession);
+            telemetrySession = telemetryService;
         }
 
         public void EmitNuGetProject(NuGetProject nuGetProject)
@@ -125,26 +125,28 @@ namespace NuGet.PackageManagement.Telemetry
 
         public void EmitProjectInformation(ProjectInformation projectInformation)
         {
-            _nuGetTelemetryService.EmitEvent(
-                Common.Constants.ProjectInformationEventName,
+            var telemetryEvent = new TelemetryEvent(
+                TelemetryConstants.ProjectInformationEventName,
                 new Dictionary<string, object>
                 {
-                    { Common.Constants.NuGetProjectTypePropertyName, projectInformation.NuGetProjectType },
-                    { Common.Constants.NuGetVersionPropertyName, projectInformation.NuGetVersion },
-                    { Common.Constants.ProjectIdPropertyName, projectInformation.ProjectId.ToString() }
+                    { TelemetryConstants.NuGetProjectTypePropertyName, projectInformation.NuGetProjectType },
+                    { TelemetryConstants.NuGetVersionPropertyName, projectInformation.NuGetVersion },
+                    { TelemetryConstants.ProjectIdPropertyName, projectInformation.ProjectId.ToString() }
                 });
+            telemetrySession.PostEvent(telemetryEvent);
         }
 
         public void EmitProjectDependencyStatistics(ProjectDependencyStatistics projectDependencyStatistics)
         {
-            _nuGetTelemetryService.EmitEvent(
-                Common.Constants.ProjectDependencyStatisticsEventName,
+            var telemetryEvent = new TelemetryEvent(
+                TelemetryConstants.ProjectDependencyStatisticsEventName,
                 new Dictionary<string, object>
                 {
-                    { Common.Constants.InstalledPackageCountPropertyName, projectDependencyStatistics.InstalledPackageCount },
-                    { Common.Constants.NuGetVersionPropertyName, projectDependencyStatistics.NuGetVersion },
-                    { Common.Constants.ProjectIdPropertyName, projectDependencyStatistics.ProjectId.ToString() }
+                    { TelemetryConstants.InstalledPackageCountPropertyName, projectDependencyStatistics.InstalledPackageCount },
+                    { TelemetryConstants.NuGetVersionPropertyName, projectDependencyStatistics.NuGetVersion },
+                    { TelemetryConstants.ProjectIdPropertyName, projectDependencyStatistics.ProjectId.ToString() }
                 });
+            telemetrySession.PostEvent(telemetryEvent);
         }
 
     }

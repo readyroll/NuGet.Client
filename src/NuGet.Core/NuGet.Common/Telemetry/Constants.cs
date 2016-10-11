@@ -6,42 +6,59 @@ namespace NuGet.Common
     /// <summary>
     /// This class contains telemetry events name and properties name.
     /// </summary>
-    public static class Constants
+    public static class TelemetryConstants
     {
-        public const string EventNamePrefix = "VS/NuGet/";
-        public const string PropertyNamePrefix = "VS.NuGet.";
+        public static readonly string EventNamePrefix = "VS/NuGet/";
+        public static readonly string PropertyNamePrefix = "VS.NuGet.";
 
-        public const string NuGetVersionPropertyName = PropertyNamePrefix + "NuGetVersion";
-        public const string ProjectIdPropertyName = PropertyNamePrefix + "ProjectId";
+        public static readonly string NuGetVersionPropertyName = PropertyNamePrefix + "NuGetVersion";
+        public static readonly string ProjectIdPropertyName = PropertyNamePrefix + "ProjectId";
 
         // nuget telemetry event names
-        public const string ProjectInformationEventName = EventNamePrefix + "ProjectInformation";
-        public const string ProjectDependencyStatisticsEventName = EventNamePrefix + "DependencyStatistics";
-        public const string NugetActionEventName = EventNamePrefix + "NugetAction";
-        public const string NugetActionStepsEventName = EventNamePrefix + "NugetActionSteps";
-        public const string RestoreActionEventName = EventNamePrefix + "RestoreInformation";
-        public const string RestoreStepsEventName = EventNamePrefix + "RestoreStepsInformation";
+        public static readonly string ProjectInformationEventName = EventNamePrefix + "ProjectInformation";
+        public static readonly string ProjectDependencyStatisticsEventName = EventNamePrefix + "DependencyStatistics";
+        public static readonly string NugetActionEventName = EventNamePrefix + "NugetAction";
+        public static readonly string NugetActionStepsEventName = EventNamePrefix + "NugetActionSteps";
+        public static readonly string RestoreActionEventName = EventNamePrefix + "RestoreInformation";
+        public static readonly string RestoreStepsEventName = EventNamePrefix + "RestoreStepsInformation";
 
         // project information event data
-        public const string NuGetProjectTypePropertyName = PropertyNamePrefix + "NuGetProjectType";
+        public static readonly string NuGetProjectTypePropertyName = PropertyNamePrefix + "NuGetProjectType";
 
         // dependency statistics event data
-        public const string InstalledPackageCountPropertyName = PropertyNamePrefix + "InstalledPackageCount";
+        public static readonly string InstalledPackageCountPropertyName = PropertyNamePrefix + "InstalledPackageCount";
 
         // nuget action event data
-        public const string OperationIdPropertyName = PropertyNamePrefix + "OperationId";
-        public const string ProjectIdsPropertyName = PropertyNamePrefix + "ProjectIds";
-        public const string OperationTypePropertyName = PropertyNamePrefix + "OperationType";
-        public const string OperationSourcePropertyName = PropertyNamePrefix + "OperationSource";
-        public const string PackagesCountPropertyName = PropertyNamePrefix + "PackagesCount";
-        public const string OperationStatusPropertyName = PropertyNamePrefix + "OperationStatus";
-        public const string StatusMessagePropertyName = PropertyNamePrefix + "StatusMessage";
-        public const string StartTimePropertyName = PropertyNamePrefix + "StartTime";
-        public const string EndTimePropertyName = PropertyNamePrefix + "EndTime";
-        public const string DurationPropertyName = PropertyNamePrefix + "Duration";
+        public static readonly string OperationIdPropertyName = PropertyNamePrefix + "OperationId";
+        public static readonly string ProjectIdsPropertyName = PropertyNamePrefix + "ProjectIds";
+        public static readonly string OperationTypePropertyName = PropertyNamePrefix + "OperationType";
+        public static readonly string OperationSourcePropertyName = PropertyNamePrefix + "OperationSource";
+        public static readonly string PackagesCountPropertyName = PropertyNamePrefix + "PackagesCount";
+        public static readonly string OperationStatusPropertyName = PropertyNamePrefix + "OperationStatus";
+        public static readonly string StatusMessagePropertyName = PropertyNamePrefix + "StatusMessage";
+        public static readonly string StartTimePropertyName = PropertyNamePrefix + "StartTime";
+        public static readonly string EndTimePropertyName = PropertyNamePrefix + "EndTime";
+        public static readonly string DurationPropertyName = PropertyNamePrefix + "Duration";
 
         // nuget action step event data
-        public const string StepNamePropertyName = PropertyNamePrefix + "StepName";
+        public static readonly string StepNamePropertyName = PropertyNamePrefix + "StepName";
+        public static readonly string PreviewBuildIntegratedStepName = "Preview build integrated action for {0} time";
+        public static readonly string WritingLockFileStepName = "Writing project assets file action for {0} time";
+        public static readonly string ExecuteInitScriptStepName = "Executing init script action for {0} time";
+        public static readonly string ParentRestoreStepName = "Parent projects restore action for {0} time";
+        public static readonly string GatherDependencyStepName = "Gather dependency action for {0} time";
+        public static readonly string ResolveDependencyStepName = "Resolve dependency action for {0} time";
+        public static readonly string ResolvedActionsStepName = "Resolved nuget actions for {0} time";
+        public static readonly string ExecuteActionStepName = "Executing nuget actions for {0} time";
+        public static readonly string PreviewUninstallStepName = "Preview uninstall action for {0} time";
 
+        // restore action step event data
+        public static readonly string RestorePackagesConfigStepName = "Restore packages config action time";
+        public static readonly string IsRequiredRequiredStepName = "Is restore required action time";
+        public static readonly string RestoreGraphStepName = "Building restore graph action for {0} time";
+        public static readonly string ToolsRestoreStepName = "Tools restore action for {0} time";
+        public static readonly string CreateAssetsFileStepName = "Creating assets file action for {0} time";
+        public static readonly string PackageCompatibilityStepName = "Check packages compatibility action for {0} time";
+        public static readonly string CreateTargetPropFileStepName = "Generating targets and props file action for {0} time";
     }
 }

@@ -55,6 +55,8 @@ namespace NuGet.PackageManagement
 
         public IInstallationCompatibility InstallationCompatibility { get; set; }
 
+        public ActionsTelemetryService NugetActionsTelemetryService { get; set; }
+
         /// <summary>
         /// Event to be raised when batch processing of install/ uninstall packages starts at a project level
         /// </summary>
@@ -722,6 +724,8 @@ namespace NuGet.PackageManagement
 
             var actions = new List<NuGetProjectAction>();
 
+            var stopWatch = Stopwatch.StartNew();
+
             if (packageIdentities.Count == 0 && packageId == null)
             {
                 // Update-Package  all
@@ -850,6 +854,11 @@ namespace NuGet.PackageManagement
                 }
             }
 
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.PreviewBuildIntegratedStepName, NuGetProject.GetUniqueNameOrName(nuGetProject)),
+                    stopWatch.Elapsed.TotalSeconds);
+
             if (actions.Count == 0)
             {
                 var projectName = NuGetProject.GetUniqueNameOrName(nuGetProject);
@@ -873,6 +882,8 @@ namespace NuGet.PackageManagement
                 CancellationToken token)
         {
             var log = new LoggerAdapter(nuGetProjectContext);
+
+            var stopWatch = Stopwatch.StartNew();
 
             var projectInstalledPackageReferences = await nuGetProject.GetInstalledPackagesAsync(token);
             var oldListOfInstalledPackages = projectInstalledPackageReferences.Select(p => p.PackageIdentity);
@@ -922,11 +933,11 @@ namespace NuGet.PackageManagement
                 {
                     if (PrunePackageTree.IsExactVersion(resolutionContext.VersionConstraints))
                     {
-                        primaryTargets = new List<PackageIdentity> {preferredVersions[packageId]};
+                        primaryTargets = new List<PackageIdentity> { preferredVersions[packageId] };
                     }
                     else
                     {
-                        primaryTargetIds = new List<string> { packageId};
+                        primaryTargetIds = new List<string> { packageId };
 
                         // If we have been given just a package Id we certainly don't want the one installed - pruning will be significant
                         preferredVersions.Remove(packageId);
@@ -1020,6 +1031,12 @@ namespace NuGet.PackageManagement
 
                 var availablePackageDependencyInfoWithSourceSet = await ResolverGather.GatherAsync(gatherContext, token);
 
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.GatherDependencyStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
+                stopWatch.Restart();
+
                 if (!availablePackageDependencyInfoWithSourceSet.Any())
                 {
                     throw new InvalidOperationException(Strings.UnableToGatherDependencyInfoForMultiplePackages);
@@ -1095,6 +1112,13 @@ namespace NuGet.PackageManagement
 
                 nuGetProjectContext.Log(NuGet.ProjectManagement.MessageLevel.Info, Strings.AttemptingToResolveDependenciesForMultiplePackages);
                 var newListOfInstalledPackages = packageResolver.Resolve(packageResolverContext, token);
+
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.ResolveDependencyStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
+                stopWatch.Restart();
+
                 if (newListOfInstalledPackages == null)
                 {
                     throw new InvalidOperationException(Strings.UnableToResolveDependencyInfoForMultiplePackages);
@@ -1122,6 +1146,11 @@ namespace NuGet.PackageManagement
                     isReinstall,
                     targetIds,
                     isDependencyBehaviorIgnore);
+
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.ResolvedActionsStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
 
                 if (nuGetProjectActions.Count == 0)
                 {
@@ -1410,6 +1439,9 @@ namespace NuGet.PackageManagement
                 throw new ArgumentNullException("packageIdentity.Version");
             }
 
+            var stopWatch = Stopwatch.StartNew();
+            var projectName = NuGetProject.GetUniqueNameOrName(nuGetProject);
+
             if (nuGetProject is INuGetIntegratedProject)
             {
                 SourceRepository sourceRepository;
@@ -1435,6 +1467,11 @@ namespace NuGet.PackageManagement
                     };
                 }
 
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.PreviewBuildIntegratedStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
+
                 return actions;
             }
 
@@ -1442,8 +1479,6 @@ namespace NuGet.PackageManagement
             var oldListOfInstalledPackages = projectInstalledPackageReferences.Select(p => p.PackageIdentity);
             if (oldListOfInstalledPackages.Any(p => p.Equals(packageIdentity)))
             {
-                string projectName;
-                nuGetProject.TryGetMetadata(NuGetProjectMetadataKeys.Name, out projectName);
                 var alreadyInstalledMessage = string.Format(ProjectManagement.Strings.PackageAlreadyExistsInProject, packageIdentity, projectName ?? string.Empty);
                 throw new InvalidOperationException(alreadyInstalledMessage, new PackageAlreadyInstalledException(alreadyInstalledMessage));
             }
@@ -1472,7 +1507,6 @@ namespace NuGet.PackageManagement
                     packageTargetsForResolver.Add(packageIdentity);
 
                     // Step-1 : Get metadata resources using gatherer
-                    var projectName = NuGetProject.GetUniqueNameOrName(nuGetProject);
                     var targetFramework = nuGetProject.GetMetadata<NuGetFramework>(NuGetProjectMetadataKeys.TargetFramework);
                     nuGetProjectContext.Log(NuGet.ProjectManagement.MessageLevel.Info, Environment.NewLine);
                     nuGetProjectContext.Log(ProjectManagement.MessageLevel.Info, Strings.AttemptingToGatherDependencyInfo, packageIdentity, projectName, targetFramework);
@@ -1493,6 +1527,13 @@ namespace NuGet.PackageManagement
                     };
 
                     var availablePackageDependencyInfoWithSourceSet = await ResolverGather.GatherAsync(gatherContext, token);
+
+
+                    stopWatch.Stop();
+                    EmitTelemetryEvent(
+                        string.Format(TelemetryConstants.GatherDependencyStepName, projectName),
+                        stopWatch.Elapsed.TotalSeconds);
+                    stopWatch.Restart();
 
                     if (!availablePackageDependencyInfoWithSourceSet.Any())
                     {
@@ -1548,6 +1589,13 @@ namespace NuGet.PackageManagement
                     var packageResolver = new PackageResolver();
 
                     var newListOfInstalledPackages = packageResolver.Resolve(packageResolverContext, token);
+
+                    stopWatch.Stop();
+                    EmitTelemetryEvent(
+                        string.Format(TelemetryConstants.ResolveDependencyStepName, projectName),
+                        stopWatch.Elapsed.TotalSeconds);
+                    stopWatch.Restart();
+
                     if (newListOfInstalledPackages == null)
                     {
                         throw new InvalidOperationException(string.Format(Strings.UnableToResolveDependencyInfo, packageIdentity, resolutionContext.DependencyBehavior));
@@ -1629,6 +1677,11 @@ namespace NuGet.PackageManagement
                 var sourceRepository = await GetSourceRepository(packageIdentity, effectiveSources, logger);
                 nuGetProjectActions.Add(NuGetProjectAction.CreateInstallProjectAction(packageIdentity, sourceRepository, nuGetProject));
             }
+
+            stopWatch.Stop();
+            EmitTelemetryEvent(
+                string.Format(TelemetryConstants.ResolvedActionsStepName, projectName),
+                stopWatch.Elapsed.TotalSeconds);
 
             nuGetProjectContext.Log(ProjectManagement.MessageLevel.Info, Strings.ResolvedActionsToInstallPackage, packageIdentity);
             return nuGetProjectActions;
@@ -1795,6 +1848,8 @@ namespace NuGet.PackageManagement
                 throw new InvalidOperationException(Strings.SolutionManagerNotAvailableForUninstall);
             }
 
+            var stopWatch = Stopwatch.StartNew();
+
             if (nuGetProject is INuGetIntegratedProject)
             {
                 var action = NuGetProjectAction.CreateUninstallProjectAction(packageReference.PackageIdentity, nuGetProject);
@@ -1808,6 +1863,11 @@ namespace NuGet.PackageManagement
                         await PreviewBuildIntegratedProjectActionsAsync(buildIntegratedProject, actions, nuGetProjectContext, token)
                     };
                 }
+
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.PreviewBuildIntegratedStepName, NuGetProject.GetUniqueNameOrName(nuGetProject)),
+                    stopWatch.Elapsed.TotalSeconds);
 
                 return actions;
             }
@@ -1832,6 +1892,11 @@ namespace NuGet.PackageManagement
             var nuGetProjectActions =
                 packagesToBeUninstalled.Select(
                     package => NuGetProjectAction.CreateUninstallProjectAction(package, nuGetProject));
+
+            stopWatch.Stop();
+            EmitTelemetryEvent(
+                string.Format(TelemetryConstants.PreviewUninstallStepName, NuGetProject.GetUniqueNameOrName(nuGetProject)),
+                stopWatch.Elapsed.TotalSeconds);
 
             nuGetProjectContext.Log(ProjectManagement.MessageLevel.Info, Strings.ResolvedActionsToUninstallPackage, packageIdentity);
             return nuGetProjectActions;
@@ -1984,9 +2049,6 @@ namespace NuGet.PackageManagement
                 throw new ArgumentNullException(nameof(nuGetProjectContext));
             }
 
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-
             // DNU: Find the closure before executing the actions
             var buildIntegratedProject = nuGetProject as BuildIntegratedNuGetProject;
             if (buildIntegratedProject != null)
@@ -1998,6 +2060,9 @@ namespace NuGet.PackageManagement
             }
             else
             {
+                var stopWatch = Stopwatch.StartNew();
+                var projectName = NuGetProject.GetUniqueNameOrName(nuGetProject);
+
                 // Set the original packages config if it exists
                 var msbuildProject = nuGetProject as MSBuildNuGetProject;
                 if (msbuildProject != null)
@@ -2036,7 +2101,7 @@ namespace NuGet.PackageManagement
                     {
                         // Make this independently cancelable.
                         downloadTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-                        
+
                         // Download all packages up front in parallel
                         downloadTasks = await PackagePreFetcher.GetPackagesAsync(
                             actionsList,
@@ -2152,7 +2217,6 @@ namespace NuGet.PackageManagement
                             PackageProjectEventsProvider.Instance.NotifyBatchEnd(packageProjectEventArgs);
                         }
                     }
-
                 }
 
                 if (exceptionInfo != null)
@@ -2201,7 +2265,10 @@ namespace NuGet.PackageManagement
                 // calculate total time taken to execute all nuget actions
                 stopWatch.Stop();
                 nuGetProjectContext.Log(
-                    ProjectManagement.MessageLevel.Info, Strings.NugetActionsTotalTime, DatetimeUtility.ToReadableTimeFormat(stopWatch.Elapsed));
+                    MessageLevel.Info, Strings.NugetActionsTotalTime, DatetimeUtility.ToReadableTimeFormat(stopWatch.Elapsed));
+                EmitTelemetryEvent(
+                        string.Format(TelemetryConstants.ExecuteActionStepName, projectName),
+                        stopWatch.Elapsed.TotalSeconds);
 
                 if (exceptionInfo != null)
                 {
@@ -2306,6 +2373,7 @@ namespace NuGet.PackageManagement
                         buildIntegratedContext,
                         providers,
                         cacheContext,
+                        NugetActionsTelemetryService,
                         token);
 
                     originalLockFile = originalRestoreResult.LockFile;
@@ -2336,6 +2404,7 @@ namespace NuGet.PackageManagement
                     buildIntegratedContext,
                     providers,
                     cacheContext,
+                    NugetActionsTelemetryService,
                     token);
 
                 InstallationCompatibility.EnsurePackageCompatibility(
@@ -2405,6 +2474,9 @@ namespace NuGet.PackageManagement
             // For uninstalls continue even if the restore failed to avoid blocking the user
             if (restoreResult.Success || uninstallOnly)
             {
+                var stopWatch = Stopwatch.StartNew();
+                var projectName = NuGetProject.GetUniqueNameOrName(buildIntegratedProject);
+
                 // Write out project.json
                 // This can be replaced with the PackageSpec writer once it has been added to the library
                 using (var writer = new StreamWriter(
@@ -2438,6 +2510,7 @@ namespace NuGet.PackageManagement
                             pathContext.UserPackageFolder,
                             pathContext.FallbackPackageFolders,
                             cacheContextModifier,
+                            NugetActionsTelemetryService,
                             token);
                 }
                 else
@@ -2445,6 +2518,12 @@ namespace NuGet.PackageManagement
                     // Write out the lock file
                     await restoreResult.CommitAsync(logger, token);
                 }
+
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.WritingLockFileStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
+                stopWatch.Restart();
 
                 // Write out a message for each action
                 foreach (var action in actions)
@@ -2483,6 +2562,12 @@ namespace NuGet.PackageManagement
                     pathResolver,
                     nuGetProjectContext);
 
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.ExecuteInitScriptStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
+                stopWatch.Restart();
+
                 // find list of buildintegrated projects
                 var projects = SolutionManager.GetNuGetProjects().OfType<BuildIntegratedNuGetProject>().ToList();
 
@@ -2518,9 +2603,15 @@ namespace NuGet.PackageManagement
                             pathContext.UserPackageFolder,
                             pathContext.FallbackPackageFolders,
                             cacheContextModifier,
+                            NugetActionsTelemetryService,
                             token);
                     }
                 }
+
+                stopWatch.Stop();
+                EmitTelemetryEvent(
+                    string.Format(TelemetryConstants.ParentRestoreStepName, projectName),
+                    stopWatch.Elapsed.TotalSeconds);
             }
             else
             {
@@ -2933,6 +3024,14 @@ namespace NuGet.PackageManagement
                 {
                     ideExecutionContext.IDEDirectInstall = null;
                 }
+            }
+        }
+
+        private void EmitTelemetryEvent(string stepName, double duration)
+        {
+            if (NugetActionsTelemetryService != null)
+            {
+                NugetActionsTelemetryService.EmitActionStepsEvent(stepName, duration);
             }
         }
     }

@@ -67,7 +67,8 @@ namespace NuGet.PackageManagement
             IEnumerable<IDependencyGraphProject> projects,
             IEnumerable<string> sources,
             ISettings settings,
-            ExternalProjectReferenceContext referenceContext)
+            ExternalProjectReferenceContext referenceContext,
+            RestoreTelemetryService telemetryService)
         {
             var pathContext = NuGetPathContext.Create(settings);
             var dgSpec = new DependencyGraphSpec();
@@ -112,7 +113,8 @@ namespace NuGet.PackageManagement
                         MachineWideSettings = new XPlatMachineWideSetting(),
                         PreLoadedRequestProviders = providers,
                         CachingSourceProvider = sourceProvider,
-                        Sources = sources.ToList()
+                        Sources = sources.ToList(),
+                        NugetTelemetryService = telemetryService
                     };
 
                     var restoreSummaries = await RestoreRunner.Run(restoreContext);

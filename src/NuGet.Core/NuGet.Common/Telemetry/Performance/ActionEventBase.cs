@@ -6,18 +6,18 @@ using System;
 namespace NuGet.Common
 {
     /// <summary>
-    /// Base class to generate telemetry data for nuget operations like install, udpate or restore.
+    /// Base class to generate telemetry data for nuget operations like install, update or restore.
     /// </summary>
     public abstract class ActionEventBase
     {
         public ActionEventBase(
             string operationId,
             string[] projectIds,
-            DateTime startTime,
-            NugetOperationStatus status,
+            DateTimeOffset startTime,
+            NuGetOperationStatus status,
             string statusMessage,
             int packageCount,
-            DateTime endTime,
+            DateTimeOffset endTime,
             double duration)
         {
             OperationId = operationId;
@@ -30,27 +30,27 @@ namespace NuGet.Common
             Duration = duration;
         }
 
-        public string OperationId { get; set; }
+        public string OperationId { get; }
 
-        public string[] ProjectIds { get; set; }
+        public string[] ProjectIds { get; }
 
-        public int PackagesCount { get; set; }
+        public int PackagesCount { get; }
 
-        public NugetOperationStatus Status { get; set; }
+        public NuGetOperationStatus Status { get; }
 
-        public string StatusMessage { get; set; }
+        public string StatusMessage { get; }
 
-        public DateTime StartTime { get; set; }
+        public DateTimeOffset StartTime { get; }
 
-        public DateTime EndTime { get; set; }
+        public DateTimeOffset EndTime { get; }
 
-        public double Duration { get; set; }
+        public double Duration { get; }
     }
 
     /// <summary>
     /// Define different states for nuget operation status.
     /// </summary>
-    public enum NugetOperationStatus
+    public enum NuGetOperationStatus
     {
         /// <summary>
         /// no operation performed.
@@ -60,7 +60,7 @@ namespace NuGet.Common
         /// <summary>
         /// operation was successful.
         /// </summary>
-        Succeed = 1,
+        Succeeded = 1,
 
         /// <summary>
         /// operation failed.

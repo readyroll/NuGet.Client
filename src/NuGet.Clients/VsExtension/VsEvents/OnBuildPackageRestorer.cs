@@ -41,6 +41,8 @@ namespace NuGetVSExtension
         // of VS. From 0 (quiet) to 4 (Diagnostic).
         private int _msBuildOutputVerbosity;
 
+        private RestoreTelemetryService _telemetryService;
+
         // keeps a reference to BuildEvents so that our event handler
         // won't get disconnected.
         private readonly BuildEvents _buildEvents;
@@ -79,7 +81,7 @@ namespace NuGetVSExtension
         // If false the opt out message should be displayed
         private bool _hasOptOutBeenShown;
         private string _errorMessage = string.Empty;
-        private NugetOperationStatus _status;
+        private NuGetOperationStatus _status;
         private int _packageCount;
 
         private enum VerbosityLevel
@@ -203,10 +205,12 @@ namespace NuGetVSExtension
             _displayRestoreSummary = false;
             _hasOptOutBeenShown = !showOptOutMessage;
 
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-            var statTime = DateTime.Now;
-            _status = NugetOperationStatus.Succeed;
+            var stopWatch = Stopwatch.StartNew();
+            var startTime = DateTimeOffset.Now;
+            _status = NuGetOperationStatus.Succeeded;
+            var operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(TelemetrySession.Instance, operationId);
+            _telemetryService = new RestoreTelemetryService(telemetrySessionContext);
 
             try
             {
@@ -225,7 +229,7 @@ namespace NuGetVSExtension
                     // Get the projects from the SolutionManager
                     // Note that projects that are not supported by NuGet, will not show up in this list
                     var projects = SolutionManager.GetNuGetProjects().ToList();
-                    
+
                     var source = showOptOutMessage == true ? RestoreOperationSource.OnBuild : RestoreOperationSource.Explicit;
 
                     // Check if there are any projects that are not INuGetIntegratedProject, that is,
@@ -235,6 +239,11 @@ namespace NuGetVSExtension
                         await RestorePackagesOrCheckForMissingPackagesAsync(
                             solutionDirectory,
                             isSolutionAvailable);
+
+                        stopWatch.Stop();
+                        _telemetryService?.EmitActionStepsEvent(TelemetryConstants.RestorePackagesConfigStepName,
+                            stopWatch.Elapsed.TotalSeconds);
+                        stopWatch.Start();
                     }
 
                     var dependencyGraphProjects = projects
@@ -248,18 +257,15 @@ namespace NuGetVSExtension
 
                     stopWatch.Stop();
 
-                    var restoreTelemetryEvent = GetRestoreTelemetryEvent(
+                    EmitRestoreTelemetryEvent(
                         projects,
+                        Guid.NewGuid().ToString(),
                         source,
-                        statTime,
+                        startTime,
                         _status,
                         _errorMessage,
                         _packageCount,
-                        DateTime.Now,
                         stopWatch.Elapsed.TotalSeconds);
-
-                    var telemetryService = new RestoreTelemetryService(TelemetrySession.Instance);
-                    telemetryService.EmitRestoreEvent(restoreTelemetryEvent);
 
                 }, JoinableTaskCreationOptions.LongRunning);
             }
@@ -270,31 +276,32 @@ namespace NuGetVSExtension
             }
         }
 
-        private RestoreTelemetryEvent GetRestoreTelemetryEvent(IEnumerable<NuGetProject> projects,
+        private void EmitRestoreTelemetryEvent(IEnumerable<NuGetProject> projects,
+            string operationId,
             RestoreOperationSource source,
-            DateTime startTime,
-            NugetOperationStatus status,
+            DateTimeOffset startTime,
+            NuGetOperationStatus status,
             string statusMessage,
             int packageCount,
-            DateTime endTime,
             double duration)
         {
             var sortedProjects = projects.OrderBy(
                 project => project.GetMetadata<string>(NuGetProjectMetadataKeys.UniqueName));
-
             var projectIds = sortedProjects.Select(
                 project => project.GetMetadata<string>(NuGetProjectMetadataKeys.ProjectId)).ToArray();
 
-            return new RestoreTelemetryEvent(
-                Guid.NewGuid().ToString(),
+            var restoreTelemetryEvent = new RestoreTelemetryEvent(
+                operationId,
                 projectIds,
                 source,
                 startTime,
                 status,
                 statusMessage,
                 packageCount,
-                endTime,
+                DateTimeOffset.Now,
                 duration);
+
+            _telemetryService?.EmitRestoreEvent(restoreTelemetryEvent);
         }
 
         private void LogException(Exception ex, bool logError)
@@ -337,7 +344,7 @@ namespace NuGetVSExtension
                 WriteLine(VerbosityLevel.Quiet, Resources.PackageRestoreOptOutMessage);
             }
         }
-        
+
         private async Task RestorePackageSpecProjectsAsync(
             List<IDependencyGraphProject> projects,
             bool forceRestore,
@@ -348,6 +355,8 @@ namespace NuGetVSExtension
             {
                 return;
             }
+
+            var stopWatch = Stopwatch.StartNew();
 
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
@@ -377,12 +386,18 @@ namespace NuGetVSExtension
                     logger: this);
                 var pathContext = NuGetPathContext.Create(Settings);
 
-                // No-op all project closures are up to date and all packages exist on disk.
-                if (await DependencyGraphRestoreUtility.IsRestoreRequiredAsync(
+                var isRestoreRequired = await DependencyGraphRestoreUtility.IsRestoreRequiredAsync(
                     projects,
                     forceRestore,
                     pathContext,
-                    referenceContext))
+                    referenceContext);
+
+                stopWatch.Stop();
+                _telemetryService?.EmitActionStepsEvent(TelemetryConstants.IsRequiredRequiredStepName,
+                    stopWatch.Elapsed.TotalSeconds);
+
+                // No-op all project closures are up to date and all packages exist on disk.
+                if (isRestoreRequired)
                 {
                     // Save the project between operations.
                     _dependencyGraphProjectCache = referenceContext.ProjectCache;
@@ -416,24 +431,25 @@ namespace NuGetVSExtension
                             .Select(s => s.PackageSource.Source)
                             .ToList();
 
-                        var restoreSummeries = await DependencyGraphRestoreUtility.RestoreAsync(
+                        var restoreSummaries = await DependencyGraphRestoreUtility.RestoreAsync(
                             projects,
                             sources,
                             Settings,
-                            referenceContext);
+                            referenceContext,
+                            _telemetryService);
 
-                        _packageCount += restoreSummeries.Select(summary => summary.InstallCount).Sum();
-                        var isRestoreFailed = restoreSummeries.Any(summary => summary.Success == false);
-                        if(isRestoreFailed)
+                        _packageCount += restoreSummaries.Select(summary => summary.InstallCount).Sum();
+                        var isRestoreFailed = restoreSummaries.Any(summary => summary.Success == false);
+                        if (isRestoreFailed)
                         {
-                            _status = NugetOperationStatus.Failed;
-                            _errorMessage = string.Join(",", restoreSummeries.SelectMany(summary => summary.Errors));
+                            _status = NuGetOperationStatus.Failed;
+                            _errorMessage = string.Join(",", restoreSummaries.SelectMany(summary => summary.Errors));
                         }
                     }
                 }
                 else
                 {
-                    _status = NugetOperationStatus.NoOp;
+                    _status = NuGetOperationStatus.NoOp;
                 }
             }
         }
@@ -488,7 +504,7 @@ namespace NuGetVSExtension
                 // HasErrors will be used to show a message in the output window, that, Package restore failed
                 // If Canceled is not already set to true
                 _hasErrors = true;
-                _status = NugetOperationStatus.Failed;
+                _status = NuGetOperationStatus.Failed;
                 _errorMessage = args.Exception.Message;
                 ThreadHelper.JoinableTaskFactory.RunAsync(async delegate
                     {
@@ -609,8 +625,6 @@ namespace NuGetVSExtension
 
             await PackageRestoreManager.RaisePackagesMissingEventForSolutionAsync(solutionDirectory,
                 CancellationToken.None);
-
-
         }
 
         /// <summary>

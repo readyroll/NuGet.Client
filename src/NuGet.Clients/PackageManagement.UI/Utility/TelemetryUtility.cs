@@ -29,13 +29,13 @@ namespace NuGet.PackageManagement.UI
         /// <returns></returns>
         public static ActionsTelemetryEvent GetActionTelemetryEvent(
             IEnumerable<NuGetProject> projects,
-            NugetOperationType operationType,
+            string operationId,
+            NuGetOperationType operationType,
             OperationSource source,
-            DateTime startTime,
-            NugetOperationStatus status,
+            DateTimeOffset startTime,
+            NuGetOperationStatus status,
             string statusMessage,
             int packageCount,
-            DateTime endTime,
             double duration)
         {
             var sortedProjects = projects.OrderBy(
@@ -45,7 +45,7 @@ namespace NuGet.PackageManagement.UI
                 project => project.GetMetadata<string>(NuGetProjectMetadataKeys.ProjectId)).ToArray();
 
             return new ActionsTelemetryEvent(
-                Guid.NewGuid().ToString(),
+                operationId,
                 projectIds,
                 operationType,
                 source,
@@ -53,7 +53,7 @@ namespace NuGet.PackageManagement.UI
                 status,
                 statusMessage,
                 packageCount,
-                endTime,
+                DateTimeOffset.Now,
                 duration);
         }
     }

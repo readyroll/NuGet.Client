@@ -101,7 +101,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         protected override void ProcessRecordCore()
         {
-            var startTime = DateTime.Now;
+            var startTime = DateTimeOffset.Now;
             ActionStopWatch.Restart();
 
             Preprocess();
@@ -113,17 +113,16 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             ActionStopWatch.Stop();
             var actionTelemetryEvent = TelemetryUtility.GetActionTelemetryEvent(
                 new[] { Project },
-                NugetOperationType.Update,
+                _operationId,
+                NuGetOperationType.Update,
                 OperationSource.PMC,
                 startTime,
                 _status,
                 _errorMessage,
                 _packageCount,
-                DateTime.Now,
                 ActionStopWatch.Elapsed.TotalSeconds);
 
-            var telemetryService = new ActionsTelemetryService(TelemetrySession.Instance);
-            telemetryService.EmitActionEvent(actionTelemetryEvent);
+            _actionTelemetryService?.EmitActionEvent(actionTelemetryEvent);
         }
 
         /// <summary>
@@ -161,9 +160,9 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                     PrimarySourceRepositories,
                     Token);
 
-                if(!actions.Any())
+                if (!actions.Any())
                 {
-                    _status = NugetOperationStatus.NoOp;
+                    _status = NuGetOperationStatus.NoOp;
                 }
                 else
                 {
@@ -174,7 +173,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             }
             catch (Exception ex)
             {
-                _status = NugetOperationStatus.Failed;
+                _status = NuGetOperationStatus.Failed;
                 _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
@@ -201,13 +200,13 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                 }
                 else
                 {
-                    _status = NugetOperationStatus.NoOp;
+                    _status = NuGetOperationStatus.NoOp;
                     Log(MessageLevel.Error, Resources.Cmdlet_PackageNotInstalledInAnyProject, Id);
                 }
             }
             catch (Exception ex)
             {
-                _status = NugetOperationStatus.Failed;
+                _status = NuGetOperationStatus.Failed;
                 _errorMessage = ex.Message;
                 Log(MessageLevel.Error, ExceptionUtilities.DisplayMessage(ex));
             }
@@ -251,7 +250,7 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
             if (!actions.Any())
             {
-                _status = NugetOperationStatus.NoOp;
+                _status = NuGetOperationStatus.NoOp;
             }
             else
             {
@@ -291,10 +290,10 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
             ActionStopWatch.Stop();
 
             if (!ShouldContinueDueToDotnetDeprecation(actions, WhatIf.IsPresent))
-			{
+            {
                 ActionStopWatch.Start();
                 return;
-			}
+            }
 
             ActionStopWatch.Start();
 

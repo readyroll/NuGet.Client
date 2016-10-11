@@ -14,17 +14,17 @@ namespace NuGet.Common
             string operationId,
             string[] projectIds,
             RestoreOperationSource source,
-            DateTime startTime,
-            NugetOperationStatus status,
+            DateTimeOffset startTime,
+            NuGetOperationStatus status,
             string statusMessage,
             int packageCount,
-            DateTime endTime,
+            DateTimeOffset endTime,
             double duration) : base(operationId, projectIds, startTime, status, statusMessage, packageCount, endTime, duration)
         {
             Source = source;
         }
 
-        public RestoreOperationSource Source { get; set; }
+        public RestoreOperationSource Source { get; }
     }
 
     /// <summary>
@@ -35,17 +35,17 @@ namespace NuGet.Common
         /// <summary>
         /// When restore is trigger through OnBuild event.
         /// </summary>
-        OnBuild =0,
+        OnBuild = 0,
 
         /// <summary>
         /// When restore is trigger through manually from UI.
         /// </summary>
-        Explicit =1,
+        Explicit = 1,
 
         /// <summary>
         /// Auto restore with nuget restore manager.
         /// </summary>
-        Implicit =2,
+        Implicit = 2,
     }
 
 }

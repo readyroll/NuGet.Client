@@ -155,5 +155,10 @@ namespace NuGet.Commands
         /// </summary>
         public string RestoreOutputPath { get; set; }
 
+        /// <summary>
+        /// This will be used to trigger restore perf telemetry events at granular level of restore.
+        /// </summary>
+        public ActionsTelemetryService NugetTelemetryService { get; set; }
+
     }
 }

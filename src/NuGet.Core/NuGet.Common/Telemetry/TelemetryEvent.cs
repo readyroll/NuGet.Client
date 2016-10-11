@@ -10,10 +10,10 @@ namespace NuGet.Common
     /// </summary>
     public class TelemetryEvent
     {
-        public TelemetryEvent(string eventName)
+        public TelemetryEvent(string eventName, Dictionary<string, object> properties)
         {
             Name = eventName;
-            Properties = new Dictionary<string, object>();
+            Properties = properties;
         }
 
         public string Name { get; }

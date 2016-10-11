@@ -11,16 +11,19 @@ namespace NuGet.Common
     /// </summary>
     public class ActionsTelemetryService
     {
-        private readonly NuGetTelemetryService _nuGetTelemetryService;
+        protected readonly ITelemetrySession telemetrySession;
 
-        public ActionsTelemetryService(ITelemetrySession telemetrySession)
+        private readonly string _operationId;
+
+        public ActionsTelemetryService(ITelemetrySessionContext telemetrySessionContext)
         {
-            if (telemetrySession == null)
+            if (telemetrySessionContext == null)
             {
-                throw new ArgumentNullException(nameof(telemetrySession));
+                throw new ArgumentNullException(nameof(telemetrySessionContext));
             }
 
-            _nuGetTelemetryService = new NuGetTelemetryService(telemetrySession);
+            telemetrySession = telemetrySessionContext.TelemetrySession;
+            _operationId = telemetrySessionContext.OperationId;
         }
 
         public void EmitActionEvent(ActionsTelemetryEvent actionTelemetryData)
@@ -30,40 +33,43 @@ namespace NuGet.Common
                 throw new ArgumentNullException(nameof(actionTelemetryData));
             }
 
-            _nuGetTelemetryService.EmitEvent(
-                Constants.NugetActionEventName,
+            var telemetryEvent = new TelemetryEvent(
+                TelemetryConstants.NugetActionEventName,
                 new Dictionary<string, object>
                 {
-                    { Constants.OperationIdPropertyName, actionTelemetryData.OperationId },
-                    { Constants.ProjectIdsPropertyName, string.Join(",", actionTelemetryData.ProjectIds) },
-                    { Constants.OperationTypePropertyName, actionTelemetryData.OperationType },
-                    { Constants.OperationSourcePropertyName, actionTelemetryData.Source },
-                    { Constants.PackagesCountPropertyName, actionTelemetryData.PackagesCount },
-                    { Constants.OperationStatusPropertyName, actionTelemetryData.Status },
-                    { Constants.StatusMessagePropertyName, actionTelemetryData.StatusMessage },
-                    { Constants.StartTimePropertyName, actionTelemetryData.StartTime.ToString() },
-                    { Constants.EndTimePropertyName, actionTelemetryData.EndTime.ToString() },
-                    { Constants.DurationPropertyName, actionTelemetryData.Duration }
+                    { TelemetryConstants.OperationIdPropertyName, actionTelemetryData.OperationId },
+                    { TelemetryConstants.ProjectIdsPropertyName, string.Join(",", actionTelemetryData.ProjectIds) },
+                    { TelemetryConstants.OperationTypePropertyName, actionTelemetryData.OperationType },
+                    { TelemetryConstants.OperationSourcePropertyName, actionTelemetryData.Source },
+                    { TelemetryConstants.PackagesCountPropertyName, actionTelemetryData.PackagesCount },
+                    { TelemetryConstants.OperationStatusPropertyName, actionTelemetryData.Status },
+                    { TelemetryConstants.StatusMessagePropertyName, actionTelemetryData.StatusMessage },
+                    { TelemetryConstants.StartTimePropertyName, actionTelemetryData.StartTime.ToString() },
+                    { TelemetryConstants.EndTimePropertyName, actionTelemetryData.EndTime.ToString() },
+                    { TelemetryConstants.DurationPropertyName, actionTelemetryData.Duration }
                 }
             );
+            telemetrySession.PostEvent(telemetryEvent);
+
         }
 
-        public void EmitActionStepsEvent(ActionStepsTelemetryEvent actionStepsData)
+        public void EmitActionStepsEvent(string stepName, double duration)
         {
-            if (actionStepsData == null)
+            if (stepName == null)
             {
-                throw new ArgumentNullException(nameof(actionStepsData));
+                throw new ArgumentNullException(nameof(stepName));
             }
 
-            _nuGetTelemetryService.EmitEvent(
-                Constants.NugetActionStepsEventName,
+            var telemetryEvent = new TelemetryEvent(
+                TelemetryConstants.NugetActionStepsEventName,
                 new Dictionary<string, object>
                 {
-                    { Constants.OperationIdPropertyName, actionStepsData.OperationId },
-                    { Constants.StepNamePropertyName, actionStepsData.StepName },
-                    { Constants.DurationPropertyName, actionStepsData.Duration }
+                    { TelemetryConstants.OperationIdPropertyName, _operationId },
+                    { TelemetryConstants.StepNamePropertyName, stepName },
+                    { TelemetryConstants.DurationPropertyName, duration }
                 }
             );
+            telemetrySession.PostEvent(telemetryEvent);
         }
     }
 }

@@ -9,18 +9,11 @@ namespace NuGet.Common
     /// <summary>
     /// Perf telemetry service class for restore operation.
     /// </summary>
-    public class RestoreTelemetryService
+    public class RestoreTelemetryService : ActionsTelemetryService
     {
-       private readonly NuGetTelemetryService _nuGetTelemetryService;
-
-        public RestoreTelemetryService(ITelemetrySession telemetrySession)
+        public RestoreTelemetryService(ITelemetrySessionContext telemetrySessionContext) : 
+            base (telemetrySessionContext)
         {
-            if (telemetrySession == null)
-            {
-                throw new ArgumentNullException(nameof(telemetrySession));
-            }
-
-            _nuGetTelemetryService = new NuGetTelemetryService(telemetrySession);
         }
 
         public void EmitRestoreEvent(RestoreTelemetryEvent restoreTelemetryData)
@@ -30,21 +23,22 @@ namespace NuGet.Common
                 throw new ArgumentNullException(nameof(restoreTelemetryData));
             }
 
-            _nuGetTelemetryService.EmitEvent(
-                Constants.RestoreActionEventName,
+            var telemetryEvent = new TelemetryEvent(
+                TelemetryConstants.RestoreActionEventName,
                 new Dictionary<string, object>
                 {
-                    { Constants.OperationIdPropertyName, restoreTelemetryData.OperationId },
-                    { Constants.ProjectIdsPropertyName, string.Join(",", restoreTelemetryData.ProjectIds) },
-                    { Constants.OperationSourcePropertyName, restoreTelemetryData.Source },
-                    { Constants.PackagesCountPropertyName, restoreTelemetryData.PackagesCount },
-                    { Constants.OperationStatusPropertyName, restoreTelemetryData.Status },
-                    { Constants.StatusMessagePropertyName, restoreTelemetryData.StatusMessage },
-                    { Constants.StartTimePropertyName, restoreTelemetryData.StartTime.ToString() },
-                    { Constants.EndTimePropertyName, restoreTelemetryData.EndTime.ToString() },
-                    { Constants.DurationPropertyName, restoreTelemetryData.Duration }
+                    { TelemetryConstants.OperationIdPropertyName, restoreTelemetryData.OperationId },
+                    { TelemetryConstants.ProjectIdsPropertyName, string.Join(",", restoreTelemetryData.ProjectIds) },
+                    { TelemetryConstants.OperationSourcePropertyName, restoreTelemetryData.Source },
+                    { TelemetryConstants.PackagesCountPropertyName, restoreTelemetryData.PackagesCount },
+                    { TelemetryConstants.OperationStatusPropertyName, restoreTelemetryData.Status },
+                    { TelemetryConstants.StatusMessagePropertyName, restoreTelemetryData.StatusMessage },
+                    { TelemetryConstants.StartTimePropertyName, restoreTelemetryData.StartTime.ToString() },
+                    { TelemetryConstants.EndTimePropertyName, restoreTelemetryData.EndTime.ToString() },
+                    { TelemetryConstants.DurationPropertyName, restoreTelemetryData.Duration }
                 }
             );
+            telemetrySession.PostEvent(telemetryEvent);
         }
     }
 }

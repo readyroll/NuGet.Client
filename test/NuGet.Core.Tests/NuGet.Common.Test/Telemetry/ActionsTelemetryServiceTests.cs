@@ -10,13 +10,13 @@ namespace NuGet.Common.Test.Telemetry
     public class ActionsTelemetryServiceTests
     {
         [Theory]
-        [InlineData(NugetOperationType.Install, OperationSource.UI)]
-        [InlineData(NugetOperationType.Update, OperationSource.UI)]
-        [InlineData(NugetOperationType.Uninstall, OperationSource.UI)]
-        [InlineData(NugetOperationType.Install, OperationSource.PMC)]
-        [InlineData(NugetOperationType.Update, OperationSource.PMC)]
-        [InlineData(NugetOperationType.Uninstall, OperationSource.PMC)]
-        public void ActionsTelemetryService_EmitActionEvent_OperationSucceed(NugetOperationType operationType, OperationSource source)
+        [InlineData(NuGetOperationType.Install, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Update, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Uninstall, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Install, OperationSource.PMC)]
+        [InlineData(NuGetOperationType.Update, OperationSource.PMC)]
+        [InlineData(NuGetOperationType.Uninstall, OperationSource.PMC)]
+        public void ActionsTelemetryService_EmitActionEvent_OperationSucceed(NuGetOperationType operationType, OperationSource source)
         {
             // Arrange
             var telemetrySession = new Mock<ITelemetrySession>();
@@ -25,18 +25,21 @@ namespace NuGet.Common.Test.Telemetry
                 .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
                 .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
 
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+
             var actionTelemetryData = new ActionsTelemetryEvent(
-                Guid.NewGuid().ToString(),
-                new[] { Guid.NewGuid().ToString() },
-                operationType,
-                source,
-                DateTime.Now.AddSeconds(-3),
-                NugetOperationStatus.Succeed,
-                string.Empty,
-                1,
-                DateTime.Now,
-                2.10);
-            var service = new ActionsTelemetryService(telemetrySession.Object);
+                operationId: operationId,
+                projectIds: new[] { Guid.NewGuid().ToString() },
+                operationType: operationType,
+                source: source,
+                startTime: DateTime.Now.AddSeconds(-3),
+                status: NuGetOperationStatus.Succeeded,
+                statusMessage: string.Empty,
+                packageCount: 1,
+                endTime: DateTime.Now,
+                duration: 2.10);
+            var service = new ActionsTelemetryService(telemetrySessionContext);
 
             // Act
             service.EmitActionEvent(actionTelemetryData);
@@ -46,13 +49,13 @@ namespace NuGet.Common.Test.Telemetry
         }
 
         [Theory]
-        [InlineData(NugetOperationType.Install, OperationSource.UI)]
-        [InlineData(NugetOperationType.Update, OperationSource.UI)]
-        [InlineData(NugetOperationType.Uninstall, OperationSource.UI)]
-        [InlineData(NugetOperationType.Install, OperationSource.PMC)]
-        [InlineData(NugetOperationType.Update, OperationSource.PMC)]
-        [InlineData(NugetOperationType.Uninstall, OperationSource.PMC)]
-        public void ActionsTelemetryService_EmitActionEvent_OperationFailed(NugetOperationType operationType, OperationSource source)
+        [InlineData(NuGetOperationType.Install, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Update, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Uninstall, OperationSource.UI)]
+        [InlineData(NuGetOperationType.Install, OperationSource.PMC)]
+        [InlineData(NuGetOperationType.Update, OperationSource.PMC)]
+        [InlineData(NuGetOperationType.Uninstall, OperationSource.PMC)]
+        public void ActionsTelemetryService_EmitActionEvent_OperationFailed(NuGetOperationType operationType, OperationSource source)
         {
             // Arrange
             var telemetrySession = new Mock<ITelemetrySession>();
@@ -61,18 +64,21 @@ namespace NuGet.Common.Test.Telemetry
                 .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
                 .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
 
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+
             var actionTelemetryData = new ActionsTelemetryEvent(
-                Guid.NewGuid().ToString(),
-                new[] { Guid.NewGuid().ToString() },
-                operationType,
-                source,
-                DateTime.Now.AddSeconds(-2),
-                NugetOperationStatus.Failed,
-                "Operation Failed.",
-                1,
-                DateTime.Now,
-                1.30);
-            var service = new ActionsTelemetryService(telemetrySession.Object);
+                operationId: operationId,
+                projectIds: new[] { Guid.NewGuid().ToString() },
+                operationType: operationType,
+                source: source,
+                startTime: DateTime.Now.AddSeconds(-2),
+                status: NuGetOperationStatus.Failed,
+                statusMessage: "Operation Failed.",
+                packageCount: 1,
+                endTime: DateTime.Now,
+                duration: 1.30);
+            var service = new ActionsTelemetryService(telemetrySessionContext);
 
             // Act
             service.EmitActionEvent(actionTelemetryData);
@@ -82,10 +88,10 @@ namespace NuGet.Common.Test.Telemetry
         }
 
         [Theory]
-        [InlineData(NugetOperationType.Install)]
-        [InlineData(NugetOperationType.Update)]
-        [InlineData(NugetOperationType.Uninstall)]
-        public void ActionsTelemetryService_EmitActionEvent_OperationNoOp(NugetOperationType operationType)
+        [InlineData(NuGetOperationType.Install)]
+        [InlineData(NuGetOperationType.Update)]
+        [InlineData(NuGetOperationType.Uninstall)]
+        public void ActionsTelemetryService_EmitActionEvent_OperationNoOp(NuGetOperationType operationType)
         {
             // Arrange
             var telemetrySession = new Mock<ITelemetrySession>();
@@ -94,36 +100,77 @@ namespace NuGet.Common.Test.Telemetry
                 .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
                 .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
 
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+
             var actionTelemetryData = new ActionsTelemetryEvent(
-                Guid.NewGuid().ToString(),
-                new[] { Guid.NewGuid().ToString() },
-                operationType,
-                OperationSource.PMC,
-                DateTime.Now.AddSeconds(-1),
-                NugetOperationStatus.NoOp,
-                string.Empty,
-                1,
-                DateTime.Now,
-                .40);
-            var service = new ActionsTelemetryService(telemetrySession.Object);
+                operationId: operationId,
+                projectIds: new[] { Guid.NewGuid().ToString() },
+                operationType: operationType,
+                source: OperationSource.PMC,
+                startTime: DateTime.Now.AddSeconds(-1),
+                status: NuGetOperationStatus.NoOp,
+                statusMessage: string.Empty,
+                packageCount: 1,
+                endTime: DateTime.Now,
+                duration: .40);
+            var service = new ActionsTelemetryService(telemetrySessionContext);
 
             // Act
             service.EmitActionEvent(actionTelemetryData);
 
             // Assert
             VerifyTelemetryEventData(actionTelemetryData, lastTelemetryEvent);
+        }
+
+        [Theory]
+        [InlineData(TelemetryConstants.PreviewBuildIntegratedStepName)]
+        [InlineData(TelemetryConstants.WritingLockFileStepName)]
+        [InlineData(TelemetryConstants.ExecuteInitScriptStepName)]
+        [InlineData(TelemetryConstants.ParentRestoreStepName)]
+        [InlineData(TelemetryConstants.GatherDependencyStepName)]
+        [InlineData(TelemetryConstants.ResolveDependencyStepName)]
+        [InlineData(TelemetryConstants.ResolvedActionsStepName)]
+        [InlineData(TelemetryConstants.ExecuteActionStepName)]
+        [InlineData(TelemetryConstants.PreviewUninstallStepName)]
+        public void ActionsTelemetryService_EmitActionStepsEvent(string stepName)
+        {
+            // Arrange
+            var telemetrySession = new Mock<ITelemetrySession>();
+            TelemetryEvent lastTelemetryEvent = null;
+            telemetrySession
+                .Setup(x => x.PostEvent(It.IsAny<TelemetryEvent>()))
+                .Callback<TelemetryEvent>(x => lastTelemetryEvent = x);
+
+            string operationId = Guid.NewGuid().ToString();
+            var telemetrySessionContext = new TelemetrySessionContext(telemetrySession.Object, operationId);
+            var duration = 1.12;
+            var stepNameWithProject = string.Format(stepName, "testProject");
+            var service = new ActionsTelemetryService(telemetrySessionContext);
+
+            // Act
+            service.EmitActionStepsEvent(stepNameWithProject, duration);
+
+            // Assert
+            Assert.NotNull(lastTelemetryEvent);
+            Assert.Equal(TelemetryConstants.NugetActionStepsEventName, lastTelemetryEvent.Name);
+            Assert.Equal(3, lastTelemetryEvent.Properties.Count);
+
+            Assert.Equal(operationId, lastTelemetryEvent.Properties[TelemetryConstants.OperationIdPropertyName].ToString());
+            Assert.Equal(stepNameWithProject, lastTelemetryEvent.Properties[TelemetryConstants.StepNamePropertyName].ToString());
+            Assert.Equal(duration, (double)lastTelemetryEvent.Properties[TelemetryConstants.DurationPropertyName]);
         }
 
         private void VerifyTelemetryEventData(ActionsTelemetryEvent expected, TelemetryEvent actual)
         {
             Assert.NotNull(actual);
-            Assert.Equal(Constants.NugetActionEventName, actual.Name);
+            Assert.Equal(TelemetryConstants.NugetActionEventName, actual.Name);
             Assert.Equal(10, actual.Properties.Count);
 
-            Assert.Equal(expected.OperationType.ToString(), actual.Properties[Constants.OperationTypePropertyName].ToString());
-            Assert.Equal(expected.Source.ToString(), actual.Properties[Constants.OperationSourcePropertyName].ToString());
+            Assert.Equal(expected.OperationType.ToString(), actual.Properties[TelemetryConstants.OperationTypePropertyName].ToString());
+            Assert.Equal(expected.Source.ToString(), actual.Properties[TelemetryConstants.OperationSourcePropertyName].ToString());
 
-            Assert.Equal(expected.Duration, (double)actual.Properties[Constants.DurationPropertyName]);
+            TelemetryTestUtility.VerifyTelemetryEventData(expected, actual);
         }
     }
 }
