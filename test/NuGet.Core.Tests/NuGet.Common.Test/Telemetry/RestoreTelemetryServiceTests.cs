@@ -4,6 +4,7 @@
 using System;
 using Moq;
 using Xunit;
+using System.Collections.Generic;
 
 namespace NuGet.Common.Test.Telemetry
 {
@@ -49,13 +50,7 @@ namespace NuGet.Common.Test.Telemetry
         }
 
         [Theory]
-        [InlineData(TelemetryConstants.RestorePackagesConfigStepName)]
-        [InlineData(TelemetryConstants.IsRequiredRequiredStepName)]
-        [InlineData(TelemetryConstants.RestoreGraphStepName)]
-        [InlineData(TelemetryConstants.ToolsRestoreStepName)]
-        [InlineData(TelemetryConstants.CreateAssetsFileStepName)]
-        [InlineData(TelemetryConstants.PackageCompatibilityStepName)]
-        [InlineData(TelemetryConstants.CreateTargetPropFileStepName)]
+        [MemberData(nameof(GetStepNames))]
         public void RestoreTelemetryService_EmitActionStepsEvent(string stepName)
         {
             // Arrange
@@ -82,6 +77,17 @@ namespace NuGet.Common.Test.Telemetry
             Assert.Equal(operationId, lastTelemetryEvent.Properties[TelemetryConstants.OperationIdPropertyName].ToString());
             Assert.Equal(stepNameWithProject, lastTelemetryEvent.Properties[TelemetryConstants.StepNamePropertyName].ToString());
             Assert.Equal(duration, (double)lastTelemetryEvent.Properties[TelemetryConstants.DurationPropertyName]);
+        }
+
+        public static IEnumerable<object[]> GetStepNames()
+        {
+            yield return new[] { TelemetryConstants.RestorePackagesConfigStepName };
+            yield return new[] { TelemetryConstants.IsRequiredRequiredStepName };
+            yield return new[] { TelemetryConstants.RestoreGraphStepName };
+            yield return new[] { TelemetryConstants.ToolsRestoreStepName };
+            yield return new[] { TelemetryConstants.CreateAssetsFileStepName };
+            yield return new[] { TelemetryConstants.PackageCompatibilityStepName };
+            yield return new[] { TelemetryConstants.CreateTargetPropFileStepName };
         }
 
         private void VerifyTelemetryEventData(RestoreTelemetryEvent expected, TelemetryEvent actual)

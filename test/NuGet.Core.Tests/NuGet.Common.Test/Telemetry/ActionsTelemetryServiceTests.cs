@@ -4,6 +4,7 @@
 using System;
 using Moq;
 using Xunit;
+using System.Collections.Generic;
 
 namespace NuGet.Common.Test.Telemetry
 {
@@ -124,15 +125,7 @@ namespace NuGet.Common.Test.Telemetry
         }
 
         [Theory]
-        [InlineData(TelemetryConstants.PreviewBuildIntegratedStepName)]
-        [InlineData(TelemetryConstants.WritingLockFileStepName)]
-        [InlineData(TelemetryConstants.ExecuteInitScriptStepName)]
-        [InlineData(TelemetryConstants.ParentRestoreStepName)]
-        [InlineData(TelemetryConstants.GatherDependencyStepName)]
-        [InlineData(TelemetryConstants.ResolveDependencyStepName)]
-        [InlineData(TelemetryConstants.ResolvedActionsStepName)]
-        [InlineData(TelemetryConstants.ExecuteActionStepName)]
-        [InlineData(TelemetryConstants.PreviewUninstallStepName)]
+        [MemberData(nameof(GetStepNames))]
         public void ActionsTelemetryService_EmitActionStepsEvent(string stepName)
         {
             // Arrange
@@ -159,6 +152,19 @@ namespace NuGet.Common.Test.Telemetry
             Assert.Equal(operationId, lastTelemetryEvent.Properties[TelemetryConstants.OperationIdPropertyName].ToString());
             Assert.Equal(stepNameWithProject, lastTelemetryEvent.Properties[TelemetryConstants.StepNamePropertyName].ToString());
             Assert.Equal(duration, (double)lastTelemetryEvent.Properties[TelemetryConstants.DurationPropertyName]);
+        }
+
+        public static IEnumerable<object[]> GetStepNames()
+        {
+            yield return new[] { TelemetryConstants.PreviewBuildIntegratedStepName };
+            yield return new[] { TelemetryConstants.WritingLockFileStepName };
+            yield return new[] { TelemetryConstants.ExecuteInitScriptStepName };
+            yield return new[] { TelemetryConstants.ParentRestoreStepName };
+            yield return new[] { TelemetryConstants.GatherDependencyStepName };
+            yield return new[] { TelemetryConstants.ResolveDependencyStepName };
+            yield return new[] { TelemetryConstants.ResolvedActionsStepName };
+            yield return new[] { TelemetryConstants.ExecuteActionStepName };
+            yield return new[] { TelemetryConstants.PreviewUninstallStepName };
         }
 
         private void VerifyTelemetryEventData(ActionsTelemetryEvent expected, TelemetryEvent actual)
