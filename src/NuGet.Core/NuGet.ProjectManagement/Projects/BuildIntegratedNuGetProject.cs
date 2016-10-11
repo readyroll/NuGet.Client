@@ -27,13 +27,10 @@ namespace NuGet.ProjectManagement.Projects
     /// A NuGet integrated MSBuild project.k
     /// These projects contain a project.json
     /// </summary>
-    public class BuildIntegratedNuGetProject : NuGetProject, INuGetIntegratedProject, IDependencyGraphProject
+    public class BuildIntegratedNuGetProject : NuGetScriptProject, INuGetIntegratedProject, IDependencyGraphProject
     {
         private readonly FileInfo _jsonConfig;
-        private readonly string _projectName;
         
-        public string MSBuildProjectPath { get; }
-
         /// <summary>
         /// Project.json based project system.
         /// </summary>
@@ -43,64 +40,14 @@ namespace NuGet.ProjectManagement.Projects
         public BuildIntegratedNuGetProject(
             string jsonConfig,
             string msBuildProjectPath,
-            IMSBuildNuGetProjectSystem msbuildProjectSystem)
+            IMSBuildNuGetProjectSystem msbuildProjectSystem) : base(msBuildProjectPath, msbuildProjectSystem)
         {
             if (jsonConfig == null)
             {
                 throw new ArgumentNullException(nameof(jsonConfig));
             }
 
-            if (msBuildProjectPath == null)
-            {
-                throw new ArgumentNullException(nameof(msBuildProjectPath));
-            }
-
             _jsonConfig = new FileInfo(jsonConfig);
-            MSBuildNuGetProjectSystem = msbuildProjectSystem;
-
-            MSBuildProjectPath = msBuildProjectPath;
-
-            _projectName = Path.GetFileNameWithoutExtension(msBuildProjectPath);
-
-            if (string.IsNullOrEmpty(_projectName))
-            {
-                throw new ArgumentException(
-                    string.Format(CultureInfo.CurrentCulture, Strings.InvalidProjectName, MSBuildProjectPath));
-            }
-
-            JObject projectJson;
-            IEnumerable<NuGetFramework> targetFrameworks = Enumerable.Empty<NuGetFramework>();
-
-            try
-            {
-                projectJson = GetJson();
-                targetFrameworks = JsonConfigUtility.GetFrameworks(projectJson);
-            }
-            catch (InvalidOperationException)
-            {
-                // Ignore a bad project.json when constructing the project, and treat it as unsupported.
-            }
-
-            // Default to unsupported if anything unexpected is returned
-            var targetFramework = NuGetFramework.UnsupportedFramework;
-
-            // Having more than one framework is not supported, but we pick the first as fallback
-            // We will eventually support more than one framework ala projectK.
-            if (targetFrameworks.Count() == 1)
-            {
-                targetFramework = targetFrameworks.First();
-            }
-
-            InternalMetadata.Add(NuGetProjectMetadataKeys.TargetFramework, targetFramework);
-            InternalMetadata.Add(NuGetProjectMetadataKeys.Name, msbuildProjectSystem.ProjectName);
-            InternalMetadata.Add(NuGetProjectMetadataKeys.FullPath, msbuildProjectSystem.ProjectFullPath);
-
-            var supported = new List<FrameworkName>
-            {
-                new FrameworkName(targetFramework.DotNetFrameworkName)
-            };
-
-            InternalMetadata.Add(NuGetProjectMetadataKeys.SupportedFrameworks, supported);
         }
 
         public bool IsRestoreRequired(
@@ -236,7 +183,7 @@ namespace NuGet.ProjectManagement.Projects
         /// Install a package using the global packages folder.
         /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1801")]
-        public async Task<bool> AddDependency(PackageDependency dependency,
+        public override async Task<bool> AddDependency(PackageDependency dependency,
             CancellationToken token)
         {
             var json = await GetJsonAsync();
@@ -252,7 +199,7 @@ namespace NuGet.ProjectManagement.Projects
         /// Uninstall a package from the config file.
         /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA1801")]
-        public async Task<bool> RemoveDependency(string packageId,
+        public override async Task<bool> RemoveDependency(string packageId,
             INuGetProjectContext nuGetProjectContext,
             CancellationToken token)
         {
@@ -273,7 +220,7 @@ namespace NuGet.ProjectManagement.Projects
         /// <summary>
         /// project.json path
         /// </summary>
-        public virtual string JsonConfigPath
+        public string JsonConfigPath
         {
             get { return _jsonConfig.FullName; }
         }
@@ -326,22 +273,6 @@ namespace NuGet.ProjectManagement.Projects
             return new List<PackageSpec>() { packageSpec };
         }
 
-        /// <summary>
-        /// Project name
-        /// </summary>
-        public virtual string ProjectName
-        {
-            get
-            {
-                return _projectName;
-            }
-        }
-
-        /// <summary>
-        /// The underlying msbuild project system
-        /// </summary>
-        public IMSBuildNuGetProjectSystem MSBuildNuGetProjectSystem { get; }
-
         public DateTimeOffset LastModified
         {
             get
@@ -357,16 +288,30 @@ namespace NuGet.ProjectManagement.Projects
             }
         }
 
-        /// <summary>
-        /// Script executor hook
-        /// </summary>
-        public virtual Task<bool> ExecuteInitScriptAsync(
-            PackageIdentity identity,
-            string packageInstallPath,
-            INuGetProjectContext projectContext,
-            bool throwOnFailure)
+        protected override NuGetFramework GetTargetFramework()
         {
-            return Task.FromResult(false);
+            JObject projectJson;
+            IEnumerable<NuGetFramework> targetFrameworks = Enumerable.Empty<NuGetFramework>();
+
+            try
+            {
+                projectJson = GetJson();
+                targetFrameworks = JsonConfigUtility.GetFrameworks(projectJson);
+            }
+            catch (InvalidOperationException)
+            {
+                // Ignore a bad project.json when constructing the project, and treat it as unsupported.
+            }
+
+            // Having more than one framework is not supported, but we pick the first as fallback
+            // We will eventually support more than one framework ala projectK.
+            if (targetFrameworks.Count() == 1)
+            {
+                return targetFrameworks.First();
+            }
+
+            // Default to unsupported if anything unexpected is returned
+            return NuGetFramework.UnsupportedFramework;
         }
 
         private async Task<JObject> GetJsonAsync()
