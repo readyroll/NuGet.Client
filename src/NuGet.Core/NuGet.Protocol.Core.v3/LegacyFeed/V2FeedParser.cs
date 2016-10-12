@@ -22,14 +22,14 @@ namespace NuGet.Protocol
     /// <summary>
     /// A light weight XML parser for NuGet V2 Feeds
     /// </summary>
-    public sealed class V2FeedParser
+    public sealed class V2FeedParser : IV2FeedParser
     {
         private const string Xml = "http://www.w3.org/XML/1998/namespace";
         private const string W3Atom = "http://www.w3.org/2005/Atom";
         private const string MetadataNS = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
         private const string DataServicesNS = "http://schemas.microsoft.com/ado/2007/08/dataservices";
         private const string FindPackagesByIdFormat = "/FindPackagesById()?id='{0}'";
-        private const string SearchEndPointFormat = "/Search()?$filter={0}&searchTerm='{1}'&targetFramework='{2}'&includePrerelease={3}&$skip={4}&$top={5}";
+        private const string SearchEndpointFormat = "/Search()?{0}{1}searchTerm='{2}'&targetFramework='{3}'&includePrerelease={4}&$skip={5}&$top={6}";
         private const string GetPackagesFormat = "/Packages(Id='{0}',Version='{1}')";
         private const string IsLatestVersionFilterFlag = "IsLatestVersion";
         private const string IsAbsoluteLatestVersionFilterFlag = "IsAbsoluteLatestVersion";
@@ -211,18 +211,48 @@ namespace NuGet.Protocol
 
         public async Task<IReadOnlyList<V2FeedPackageInfo>> Search(string searchTerm, SearchFilter filters, int skip, int take, ILogger log, CancellationToken cancellationToken)
         {
-            // get target framework shortname of all the projects in a solution
+            // Get target framework short folder name of all the projects in a solution.
             var shortFormTargetFramework = string.Join("|", filters.SupportedFrameworks.Select(
                 targetFramework => NuGetFramework.Parse(targetFramework).GetShortFolderName()));
 
-            // The search term comes in already encoded from VS
-            var uri = string.Format(CultureInfo.InvariantCulture, SearchEndPointFormat,
-                                    filters.IncludePrerelease ? IsAbsoluteLatestVersionFilterFlag : IsLatestVersionFilterFlag,
-                                    UriUtility.UrlEncodeOdataParameter(searchTerm),
-                                    UriUtility.UrlEncodeOdataParameter(shortFormTargetFramework),
-                                    filters.IncludePrerelease.ToString().ToLowerInvariant(),
-                                    skip,
-                                    take);
+            // Determine the order by query parameter (if any).
+            string orderBy;
+            switch (filters.OrderBy)
+            {
+                case SearchOrderBy.Id:
+                    orderBy = "Id";
+                    break;
+                default:
+                    orderBy = null;
+                    break;
+            }
+
+            // Determine the filter (if any).
+            string filter;
+            switch (filters.Filter)
+            {
+                case SearchFilterType.IsLatestVersion:
+                    filter = "IsLatestVersion";
+                    break;
+                case SearchFilterType.IsAbsoluteLatestVersion:
+                    filter = "IsAbsoluteLatestVersion";
+                    break;
+                default:
+                    filter = null;
+                    break;
+            }
+            
+            // Build the URI.
+            var uri = string.Format(
+                CultureInfo.InvariantCulture,
+                SearchEndpointFormat,
+                filter != null ? $"filter={filter}&" : string.Empty,
+                orderBy != null ? $"orderby={orderBy}&" : string.Empty,
+                UriUtility.UrlEncodeOdataParameter(searchTerm),
+                UriUtility.UrlEncodeOdataParameter(shortFormTargetFramework),
+                filters.IncludePrerelease.ToString().ToLowerInvariant(),
+                skip,
+                take);
 
             return await QueryV2Feed(
                 uri,

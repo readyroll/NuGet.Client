@@ -16,7 +16,7 @@ namespace NuGet.Protocol.Core.Types
         /// Defaults
         /// </summary>
         public SearchFilter()
-            : this(Enumerable.Empty<string>(), false, false)
+            : this(Enumerable.Empty<string>(), includePrerelease: false, includeDelisted: false)
         {
         }
 
@@ -74,5 +74,15 @@ namespace NuGet.Protocol.Core.Types
         /// Restrict the search to certain package types.
         /// </summary>
         public IEnumerable<string> PackageTypes { get; set; }
+
+        /// <summary>
+        /// The optional filter type. Absense of this filter indicates that all versions should be returned.
+        /// </summary>
+        public SearchFilterType? Filter { get; set; }
+
+        /// <summary>
+        /// The optional order by. Absense of this filter indicates that search results should be ordered by relevance.
+        /// </summary>
+        public SearchOrderBy? OrderBy { get; set; }
     }
 }
