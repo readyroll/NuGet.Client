@@ -259,7 +259,7 @@ namespace NuGetVSExtension
 
                     EmitRestoreTelemetryEvent(
                         projects,
-                        Guid.NewGuid().ToString(),
+                        operationId,
                         source,
                         startTime,
                         _status,

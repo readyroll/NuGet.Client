@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "Microsoft.VisualStudio.ProjectSystem.Interop":{
+    "Microsoft.VisualStudio.ProjectSystem.Interop": {
       "type": "build",
       "version": "1.0.0-*"
     },
@@ -31,7 +31,8 @@
     "NuGet.Test.Utility": {
       "target": "project"
     },
-    "xunit": "2.1.0"
+    "xunit": "2.1.0",
+    "Moq": "4.2.1510.2205"
   },
   "frameworks": {
     "net45": {

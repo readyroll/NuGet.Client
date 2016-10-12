@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Moq;
 using Xunit;
-using System.Collections.Generic;
 
-namespace NuGet.Common.Test.Telemetry
+namespace NuGet.Common.Test
 {
     public class ActionsTelemetryServiceTests
     {
@@ -176,7 +176,7 @@ namespace NuGet.Common.Test.Telemetry
             Assert.Equal(expected.OperationType.ToString(), actual.Properties[TelemetryConstants.OperationTypePropertyName].ToString());
             Assert.Equal(expected.Source.ToString(), actual.Properties[TelemetryConstants.OperationSourcePropertyName].ToString());
 
-            TelemetryTestUtility.VerifyTelemetryEventData(expected, actual);
+            TelemetryUtilityTest.VerifyTelemetryEventData(expected, actual);
         }
     }
 }
