@@ -246,8 +246,8 @@ namespace NuGet.Protocol
             var uri = string.Format(
                 CultureInfo.InvariantCulture,
                 SearchEndpointFormat,
-                filter != null ? $"filter={filter}&" : string.Empty,
-                orderBy != null ? $"orderby={orderBy}&" : string.Empty,
+                filter != null ? $"$filter={filter}&" : string.Empty,
+                orderBy != null ? $"$orderby={orderBy}&" : string.Empty,
                 UriUtility.UrlEncodeOdataParameter(searchTerm),
                 UriUtility.UrlEncodeOdataParameter(shortFormTargetFramework),
                 filters.IncludePrerelease.ToString().ToLowerInvariant(),

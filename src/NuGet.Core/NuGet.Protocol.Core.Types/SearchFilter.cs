@@ -53,6 +53,7 @@ namespace NuGet.Protocol.Core.Types
             IncludeDelisted = includeDelisted;
             IncludePrerelease = includePrerelease;
             PackageTypes = packageTypes;
+            Filter = IncludePrerelease ? SearchFilterType.IsAbsoluteLatestVersion : SearchFilterType.IsLatestVersion;
         }
 
         /// <summary>
@@ -76,12 +77,12 @@ namespace NuGet.Protocol.Core.Types
         public IEnumerable<string> PackageTypes { get; set; }
 
         /// <summary>
-        /// The optional filter type. Absense of this filter indicates that all versions should be returned.
+        /// The optional filter type. Absense of this value indicates that all versions should be returned.
         /// </summary>
         public SearchFilterType? Filter { get; set; }
 
         /// <summary>
-        /// The optional order by. Absense of this filter indicates that search results should be ordered by relevance.
+        /// The optional order by. Absense of this value indicates that search results should be ordered by relevance.
         /// </summary>
         public SearchOrderBy? OrderBy { get; set; }
     }
