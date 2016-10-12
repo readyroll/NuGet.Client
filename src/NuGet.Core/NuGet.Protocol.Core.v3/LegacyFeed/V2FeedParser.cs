@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -209,7 +210,13 @@ namespace NuGet.Protocol
             return FindPackagesByIdAsync(id, includeUnlisted: true, includePrerelease: true, log: log, token: token);
         }
 
-        public async Task<IReadOnlyList<V2FeedPackageInfo>> Search(string searchTerm, SearchFilter filters, int skip, int take, ILogger log, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<V2FeedPackageInfo>> Search(
+            string searchTerm,
+            SearchFilter filters,
+            int skip,
+            int take,
+            ILogger log,
+            CancellationToken cancellationToken)
         {
             // Get target framework short folder name of all the projects in a solution.
             var shortFormTargetFramework = string.Join("|", filters.SupportedFrameworks.Select(
