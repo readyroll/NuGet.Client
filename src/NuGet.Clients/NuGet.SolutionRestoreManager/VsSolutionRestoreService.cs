@@ -117,7 +117,7 @@ namespace NuGet.SolutionRestoreManager
                 dgFile.AddRestore(packageSpec.RestoreMetadata.ProjectName);
                 dgFile.AddProject(packageSpec);
 
-                var dgPath = Path.Combine(outputPath, $"{Guid.NewGuid().ToString()}.dg2");
+                var dgPath = Path.Combine(outputPath, $"{Guid.NewGuid()}.dg2");
                 dgFile.Save(dgPath);
             }
             catch(Exception ex)

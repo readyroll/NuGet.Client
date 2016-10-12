@@ -24,6 +24,7 @@ using NuGet.Protocol.Core.Types;
 namespace NuGet.PackageManagement.VisualStudio
 {
     [PartCreationPolicy(CreationPolicy.Shared)]
+    [Export(typeof(ISolutionManager))]
     [Export(typeof(IVsSolutionManager))]
     public class VSSolutionManager : IVsSolutionManager, IVsSelectionEvents
     {
