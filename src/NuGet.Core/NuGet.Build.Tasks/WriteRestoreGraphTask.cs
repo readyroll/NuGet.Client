@@ -21,6 +21,11 @@ namespace NuGet.Build.Tasks
         [Required]
         public string RestoreGraphOutputPath { get; set; }
 
+        /// <summary>
+        /// Restore only the entry point(s).
+        /// </summary>
+        public bool RestoreNoRecurse { get; set; }
+
         public override bool Execute()
         {
             if (RestoreGraphItems.Length < 1)
@@ -31,11 +36,21 @@ namespace NuGet.Build.Tasks
 
             var log = new MSBuildLogger(Log);
 
+            log.LogDebug($"(in) RestoreGraphItems Count '{RestoreGraphItems?.Count() ?? 0}'");
+            log.LogDebug($"(in) RestoreGraphOutputPath '{RestoreGraphOutputPath}'");
+            log.LogDebug($"(in) RestoreNoRecurse '{RestoreNoRecurse}'");
+
             // Convert to the internal wrapper
             var wrappedItems = RestoreGraphItems.Select(GetMSBuildItem);
 
             // Create file
             var dgFile = MSBuildRestoreUtility.GetDependencySpec(wrappedItems);
+
+            // Add all child projects unless no recurse is set.
+            if (!RestoreNoRecurse)
+            {
+                dgFile.AddRestoreForAllProjects();
+            }
 
             var fileInfo = new FileInfo(RestoreGraphOutputPath);
             fileInfo.Directory.Create();
