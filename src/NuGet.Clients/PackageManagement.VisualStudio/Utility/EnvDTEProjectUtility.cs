@@ -57,6 +57,7 @@ namespace NuGet.PackageManagement.VisualStudio
                 NuGetVSConstants.DeploymentProjectTypeGuid,
                 NuGetVSConstants.CosmosProjectTypeGuid,
                 NuGetVSConstants.ManagementPackProjectTypeGuid,
+                NuGetVSConstants.SsdtDatabaseProjectTypeGuid
             };
 
         private static readonly HashSet<string> UnsupportedProjectCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
